@@ -1,0 +1,7 @@
+node_modules/
+.supabase/
+branches/
+temp/
+.env
+.env.local
+.env.*.local

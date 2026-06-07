@@ -1,0 +1,69 @@
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Testing
+coverage/
+*.lcov
+.nyc_output/
+
+# Production
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Turbo
+.turbo/
+
+# Supabase
+supabase/.branches
+supabase/.temp
+supabase/.env
+
+# Chrome Extension
+apps/extension/dist/
+apps/extension/build/
+
+# Temporary
+*.tmp
+*.temp
+.cache/
+
+# Graphify (build cache)
+graphify-out/
+
+# Gemini IDE
+.gemini/

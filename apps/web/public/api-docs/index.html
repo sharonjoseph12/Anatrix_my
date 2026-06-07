@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Antarix API Documentation</title>
+
+  <!--
+    Swagger UI 5.32.6 — pinned to the latest 5.x stable on npm.
+    Pinned via the @5.32.6 path component so an upstream re-publish
+    of the @5 dist-tag cannot silently swap the served bundle.
+
+    TODO: pin SubResource Integrity (SRI) hashes from the official
+    Swagger UI v5.32.6 release notes before this site is promoted
+    to a public trust boundary:
+      https://github.com/swagger-api/swagger-ui/releases/tag/v5.32.6
+    No SRI is shipped in v1 — see docs/api-docs-site.md §"Security".
+  -->
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.32.6/swagger-ui.css">
+
+  <style>
+    /* ---------------------------------------------------------------
+       Antarix brand for the public API docs site
+       --------------------------------------------------------------- */
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                   Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: #1f2937; }
+    a:hover { text-decoration: underline; }
+
+    /* Top brand bar — 2px slate-800 top border per the Antarix brand. */
+    .antarix-topbar {
+      position: sticky; top: 0; z-index: 10;
+      background: #ffffff;
+      border-top: 2px solid #1f2937;
+      border-bottom: 1px solid #e5e7eb;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+    }
+    .antarix-topbar-inner {
+      max-width: 1200px; margin: 0 auto;
+      padding: 12px 24px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .antarix-topbar .mark { width: 32px; height: 32px; display: block; }
+    .antarix-topbar .title {
+      font-size: 17px; font-weight: 600; color: #0f172a;
+    }
+    .antarix-topbar .title a { color: inherit; text-decoration: none; }
+    .antarix-topbar .back {
+      margin-left: auto; font-size: 14px;
+      color: #1f2937; text-decoration: none;
+    }
+    .antarix-topbar .back:hover { text-decoration: underline; }
+
+    /* Try-it-out security notice. */
+    .antarix-notice {
+      max-width: 1200px; margin: 12px auto 0;
+      padding: 10px 14px;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: 6px;
+      font-size: 13px; color: #78350f;
+    }
+    .antarix-notice strong { color: #78350f; }
+
+    /* Main content container. */
+    .antarix-main {
+      max-width: 1200px;
+      margin: 16px auto 24px;
+      padding: 0 24px;
+    }
+
+    /* Monospace font for all code samples (Swagger UI's body, the
+       `x-codeSamples` blocks, the embedded JSON examples, and the
+       generated request/response payloads). */
+    pre, code, .microlight, .hljs, .swagger-ui .highlight-code,
+    .swagger-ui .response-col_description__inner .renderedMarkdown,
+    .swagger-ui .parameter__type, .swagger-ui table thead tr td,
+    .swagger-ui table tbody tr td {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+                   "Liberation Mono", "Courier New", monospace !important;
+      font-size: 13px;
+    }
+
+    /* Swagger UI tweaks. */
+    .swagger-ui .info { margin-top: 16px; }
+    .swagger-ui .scheme-container {
+      background: transparent; box-shadow: none; padding: 0;
+    }
+    /* Hide Swagger UI's own topbar — we have the Antarix one above. */
+    .swagger-ui .topbar { display: none; }
+
+    /* Footer. */
+    .antarix-footer {
+      max-width: 1200px;
+      margin: 0 auto 32px;
+      padding: 0 24px;
+      font-size: 12px;
+      color: #6b7280;
+      text-align: center;
+    }
+    .antarix-footer a { color: #1f2937; text-decoration: none; }
+    .antarix-footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <header class="antarix-topbar">
+    <div class="antarix-topbar-inner">
+      <svg class="mark" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+        <rect width="32" height="32" rx="6" fill="#1f2937"/>
+        <path d="M7 23 L13 9 L19 23 M9.5 18.5 L16.5 18.5"
+              stroke="#f8fafc" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+      <div class="title"><a href="https://antarix.app">Antarix API</a></div>
+      <a class="back" href="https://antarix.app">&larr; Back to antarix.app</a>
+    </div>
+  </header>
+
+  <div class="antarix-notice" role="note">
+    <strong>Try-it-out security:</strong>
+    Public endpoints are CORS-enabled. Authed endpoints require a Supabase JWT.
+    Do not paste production tokens into the public docs site.
+  </div>
+
+  <main class="antarix-main">
+    <div id="swagger-ui"></div>
+  </main>
+
+  <footer class="antarix-footer">
+    Need help? <a href="mailto:api@antarix.app">api@antarix.app</a> &middot;
+    Report security issues: <a href="mailto:security@antarix.app">security@antarix.app</a>
+  </footer>
+
+  <script src="https://unpkg.com/swagger-ui-dist@5.32.6/swagger-ui-bundle.js"></script>
+  <script>
+    window.onload = () => {
+      window.ui = SwaggerUIBundle({
+        url: '/api-docs/openapi.yaml',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [SwaggerUIBundle.presets.apis],
+        layout: 'BaseLayout',
+        defaultModelsExpandDepth: 2,
+        defaultModelExpandDepth: 3,
+        docExpansion: 'list',
+        filter: true,
+        showExtensions: true,
+        showCommonExtensions: true,
+        persistAuthorization: true,
+        tryItOutEnabled: true
+      });
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Antarix Status</title>
+<meta name="robots" content="noindex">
+<meta name="description" content="Real-time health of every Antarix subsystem.">
+<style>
+  :root {
+    --bg: #fafaf9; --fg: #1c1917; --muted: #78716c; --border: #e7e5e4; --card: #fff;
+    --green: #15803d; --yellow: #a16207; --red: #b91c1c; --blue: #1d4ed8;
+    --green-bg: #dcfce7; --yellow-bg: #fef9c3; --red-bg: #fee2e2; --blue-bg: #dbeafe;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c0a09; --fg: #f5f5f4; --muted: #a8a29e; --border: #292524; --card: #1c1917;
+      --green-bg: #14532d; --yellow-bg: #713f12; --red-bg: #7f1d1d; --blue-bg: #1e3a8a;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.5; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 24px; margin: 0 0 4px; font-weight: 700; }
+  .sub { color: var(--muted); margin: 0 0 24px; font-size: 14px; }
+  .banner { border-radius: 12px; padding: 20px 24px; margin: 0 0 24px; display: flex; align-items: center; gap: 12px; transition: background 0.2s; }
+  .banner .dot { width: 16px; height: 16px; border-radius: 50%; flex: none; }
+  .banner h2 { margin: 0; font-size: 20px; font-weight: 600; }
+  .banner p { margin: 4px 0 0; font-size: 14px; opacity: 0.9; }
+  .banner.operational { background: var(--green-bg); color: var(--green); }
+  .banner.operational .dot { background: var(--green); }
+  .banner.degraded   { background: var(--yellow-bg); color: var(--yellow); }
+  .banner.degraded .dot   { background: var(--yellow); }
+  .banner.down       { background: var(--red-bg); color: var(--red); }
+  .banner.down .dot       { background: var(--red); }
+  .banner.unknown    { background: var(--border); color: var(--muted); }
+  .banner.unknown .dot    { background: var(--muted); }
+  section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin: 0 0 16px; }
+  section h2 { font-size: 16px; margin: 0 0 12px; font-weight: 600; }
+  .sub-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--border); }
+  .sub-row:first-of-type { border-top: 0; }
+  .sub-name { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+  .sub-lat { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .incident { padding: 12px 0; border-top: 1px solid var(--border); }
+  .incident:first-of-type { border-top: 0; }
+  .incident-title { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .incident-meta { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
+  .incident-summary { font-size: 14px; margin: 8px 0 0; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .tag.investigating { background: var(--red-bg); color: var(--red); }
+  .tag.identified    { background: var(--yellow-bg); color: var(--yellow); }
+  .tag.monitoring    { background: var(--blue-bg); color: var(--blue); }
+  .tag.resolved      { background: var(--green-bg); color: var(--green); }
+  details summary { cursor: pointer; user-select: none; list-style: none; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary h2 { display: inline; }
+  details summary::after { content: " ▸"; color: var(--muted); font-size: 12px; }
+  details[open] summary::after { content: " ▾"; }
+  footer { color: var(--muted); font-size: 13px; margin-top: 32px; text-align: center; }
+  footer a { color: var(--muted); text-decoration: underline; }
+  .updated { color: var(--muted); font-size: 12px; text-align: center; margin: 16px 0 0; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Antarix Status</h1>
+  <p class="sub">Real-time health of every Antarix subsystem.</p>
+
+  <div id="banner" class="banner unknown" role="status" aria-live="polite">
+    <span class="dot"></span>
+    <div>
+      <h2 id="banner-title">Loading…</h2>
+      <p id="banner-sub">Checking subsystem health.</p>
+    </div>
+  </div>
+
+  <section>
+    <h2>Subsystems</h2>
+    <div id="subsystem-list"></div>
+  </section>
+
+  <section id="active-incidents" hidden>
+    <h2>Active incidents</h2>
+    <div id="active-incident-list"></div>
+  </section>
+
+  <section id="scheduled">
+    <h2>Scheduled maintenance</h2>
+    <div id="scheduled-list"></div>
+  </section>
+
+  <section id="past-incidents" hidden>
+    <details>
+      <summary><h2>Past incidents</h2></summary>
+      <div id="past-incident-list"></div>
+    </details>
+  </section>
+
+  <p class="updated">Last updated: <time id="updated">—</time> · auto-refresh every 30s</p>
+
+  <footer>
+    <a href="https://antarix.app/docs/security/vdp">Report a security issue</a> ·
+    <a href="mailto:status@antarix.app">status@antarix.app</a>
+  </footer>
+</main>
+
+<script>
+// Inline at the end of <body> so it runs after the DOM is parsed — the
+// non-render-blocking equivalent of <script defer>. The spec only allows
+// `defer` on external (src=…) scripts; putting the script last in body is
+// the idiomatic inlined equivalent.
+(function () {
+  "use strict";
+
+  var ENDPOINT = "https://antarix.app/functions/v1/status-page-data";
+  var DOT  = { operational: "🟢", degraded: "🟡", down: "🔴", unknown: "⚪" };
+  // Friendly names for the 7 subsystems. Keep in sync with the SUBSYSTEMS
+  // array in supabase/functions/status-page-data/index.ts.
+  var NAME = {
+    "core-platform":        "Core platform",
+    "credential-vc-resolve": "Public credential resolution",
+    "ai-coach":             "AI Coach pipeline",
+    "whatsapp-send":        "WhatsApp delivery",
+    "nudge-dispatch":       "Nudge dispatch",
+    "github-sync":          "GitHub sync",
+    "calendar-sync":        "Calendar sync"
+  };
+
+  function el(tag, attrs, children) {
+    var e = document.createElement(tag);
+    if (attrs) for (var k in attrs) {
+      if (k === "class") e.className = attrs[k];
+      else e.setAttribute(k, attrs[k]);
+    }
+    var kids = children || [];
+    for (var i = 0; i < kids.length; i++) {
+      var c = kids[i];
+      e.appendChild(c && c.nodeType ? c : document.createTextNode(String(c == null ? "" : c)));
+    }
+    return e;
+  }
+
+  function fmt(iso) {
+    if (!iso) return "—";
+    try { return new Date(iso).toLocaleString(); } catch (e) { return iso; }
+  }
+
+  function renderSubsystem(name, s) {
+    return el("div", { class: "sub-row" }, [
+      el("div", { class: "sub-name" }, [
+        el("span", { "aria-hidden": "true" }, [DOT[s.status] || DOT.unknown]),
+        el("span", null, [NAME[name] || name])
+      ]),
+      el("div", { class: "sub-lat" }, [s.latency_ms + "ms"])
+    ]);
+  }
+
+  function renderIncident(inc) {
+    var subList = (inc.affected_subsystems || []).map(function (n) { return NAME[n] || n; }).join(", ") || "none";
+    var tag = el("span", { class: "tag " + inc.status }, [inc.status]);
+    return el("div", { class: "incident" }, [
+      el("div", { class: "incident-title" }, [inc.title, " ", tag]),
+      el("p", { class: "incident-meta" }, [fmt(inc.started_at) + " → " + (inc.resolved_at ? fmt(inc.resolved_at) : "ongoing") + " · affected: " + subList]),
+      inc.summary ? el("p", { class: "incident-summary" }, [inc.summary]) : null
+    ]);
+  }
+
+  function renderMaintenance(m) {
+    var subList = (m.affected_subsystems || []).map(function (n) { return NAME[n] || n; }).join(", ") || "none";
+    return el("div", { class: "incident" }, [
+      el("div", { class: "incident-title" }, [m.title]),
+      el("p", { class: "incident-meta" }, [fmt(m.starts_at) + " → " + fmt(m.ends_at) + " · affected: " + subList]),
+      m.description ? el("p", { class: "incident-summary" }, [m.description]) : null
+    ]);
+  }
+
+  function showSection(id, on) {
+    document.getElementById(id).hidden = !on;
+  }
+
+  function setBanner(state, title, sub) {
+    var b = document.getElementById("banner");
+    b.className = "banner " + (state || "unknown");
+    document.getElementById("banner-title").textContent = title;
+    document.getElementById("banner-sub").textContent = sub;
+  }
+
+  var BANNER_COPY = {
+    operational: ["All systems operational",       "All subsystems are responding normally."],
+    degraded:    ["Some systems degraded",         "At least one subsystem is responding slowly or with errors."],
+    down:        ["Major outage",                  "At least one subsystem is unreachable. Engineers have been paged."],
+    unknown:     ["Status unknown",                "We could not determine overall status; the subsystems section below is the source of truth."]
+  };
+
+  async function refresh() {
+    var res, data;
+    try {
+      res = await fetch(ENDPOINT, { cache: "no-store" });
+      if (!res.ok) throw new Error("status " + res.status);
+      data = await res.json();
+    } catch (err) {
+      setBanner("down", "Could not reach status service", (err && err.message) || "Network error");
+      return;
+    }
+
+    var state = data.status || "unknown";
+    var copy = BANNER_COPY[state] || BANNER_COPY.unknown;
+    setBanner(state, copy[0], copy[1]);
+
+    var subs = data.subsystems || {};
+    var list = document.getElementById("subsystem-list");
+    list.replaceChildren();
+    var names = Object.keys(subs).sort();
+    if (names.length === 0) {
+      list.appendChild(el("p", { class: "sub-meta" }, ["No subsystem data returned."]));
+    } else {
+      for (var i = 0; i < names.length; i++) list.appendChild(renderSubsystem(names[i], subs[names[i]]));
+    }
+
+    var all = data.incidents || [];
+    var active = all.filter(function (i) { return i.status !== "resolved"; });
+    var past   = all.filter(function (i) { return i.status === "resolved"; });
+
+    var aList = document.getElementById("active-incident-list");
+    aList.replaceChildren();
+    for (var j = 0; j < active.length; j++) aList.appendChild(renderIncident(active[j]));
+    showSection("active-incidents", active.length > 0);
+
+    var pList = document.getElementById("past-incident-list");
+    pList.replaceChildren();
+    for (var k = 0; k < past.length; k++) pList.appendChild(renderIncident(past[k]));
+    showSection("past-incidents", past.length > 0);
+
+    var maint = data.scheduled_maintenances || [];
+    var mList = document.getElementById("scheduled-list");
+    mList.replaceChildren();
+    if (maint.length === 0) {
+      mList.appendChild(el("p", { class: "sub-meta" }, ["No upcoming maintenance scheduled."]));
+    } else {
+      for (var m = 0; m < maint.length; m++) mList.appendChild(renderMaintenance(maint[m]));
+    }
+
+    var t = document.getElementById("updated");
+    var now = new Date();
+    t.textContent = now.toLocaleTimeString();
+    t.setAttribute("datetime", now.toISOString());
+  }
+
+  refresh();
+  setInterval(refresh, 30000);
+})();
+</script>
+</body>
+</html>
