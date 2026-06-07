@@ -73,12 +73,21 @@ export function computeRecommendations(
   // Step 3 + 4: tally next-skill mentions and the companies of the
   // alumni who learned each one. The companies feed the reasoning
   // template (mode of placement_company per skill).
+  //
+  // "Added after" semantic (spec FR-NBS-001, research D10): a skill
+  // only counts if the alumni learned it AFTER their pre-placement
+  // profile AND the student does not already have it. Excluding the
+  // pre set prevents skills that were always part of the alumni's
+  // background from being mis-attributed to "placement uplift".
   const studentSet = new Set(student.current_skills);
   const aggregated = new Map<string, { count: number; companies: string[] }>();
   for (const a of kept) {
+    const preSet = new Set(a.pre_placement_skills);
     const next = new Set<string>();
     for (const s of a.post_placement_skills) {
-      if (!studentSet.has(s)) next.add(s);
+      if (preSet.has(s)) continue;
+      if (studentSet.has(s)) continue;
+      next.add(s);
     }
     for (const skill of next) {
       const entry = aggregated.get(skill) ?? { count: 0, companies: [] };

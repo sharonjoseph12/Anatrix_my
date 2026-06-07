@@ -212,7 +212,7 @@ The recommender emits a `recommender_debug` JSON on every `curriculum_lessons` r
 
 ## Cross-cutting decisions
 
-- **Migration lands as a single additive file (`040_adaptive_learning_graph.sql`).** No destructive changes. `pgvector` extension enable is `CREATE EXTENSION IF NOT EXISTS vector` (idempotent).
+- **Migration lands as a single additive file (`045_adaptive_learning_graph.sql`).** No destructive changes. `pgvector` extension enable is `CREATE EXTENSION IF NOT EXISTS vector` (idempotent).
 - **All new edge functions emit structured logs to `supabase.functions.invoke_log`** for the existing observability stack.
 - **All new external dispatches (mentor request, video room create, lesson generation, struggle detection) log to a feature-scoped audit row** with `actor`, `subject`, `action`, `payload_hash`, `created_at`.
 - **Feature flags via existing `feature_flags` table** (from 003): every 007 capability ships behind a flag for cohort rollout. Defaults: `007_alumni_mentorship` = OFF, `007_daily_curriculum` = OFF, `007_curriculum_mentor_loop` = OFF.

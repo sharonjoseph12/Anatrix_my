@@ -247,8 +247,10 @@ describe("aggregateSignals", () => {
 
   it("respects a custom threshold", () => {
     const sig = makeSignal(0.4);
-    expect(aggregateSignals([sig], { threshold: 0.5 }).is_quarantined).toBe(true);
-    expect(aggregateSignals([sig], { threshold: 0.3 }).is_quarantined).toBe(false);
+    // score (0.4) >= threshold (0.3) → quarantined
+    // score (0.4) <  threshold (0.5) → NOT quarantined
+    expect(aggregateSignals([sig], { threshold: 0.3 }).is_quarantined).toBe(true);
+    expect(aggregateSignals([sig], { threshold: 0.5 }).is_quarantined).toBe(false);
   });
 });
 

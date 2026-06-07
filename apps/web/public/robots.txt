@@ -1,0 +1,18 @@
+# robots.txt — Antarix public web (antarix.app)
+# Policy: allow all crawlers by default; block Next.js API routes, Supabase
+# Edge Functions, authed surfaces, and the slug-based credential pages under
+# /u/* (the explicit /verify/<slug> route is allowed). See docs/seo.md §2.
+# Last reviewed 2026-06-07. Update the Sitemap: line if the host changes.
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /functions/v1/
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /settings/
+Disallow: /u/
+Disallow: /*.json$
+
+Sitemap: https://antarix.app/sitemap.xml
+Host: https://antarix.app

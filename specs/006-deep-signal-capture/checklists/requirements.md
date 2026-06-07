@@ -89,7 +89,7 @@ Each item is a pass/fail check. All items should be `[x]` before the implementat
 - [ ] CHK-08.1 Reuses 002's `peak_window_detector` (extends by writing parallel `peak_window_inferences` rows, not by modifying the 002 schema)
 - [ ] CHK-08.2 Reuses 001's `privacy-request-deletion` edge function (extends via `dpdp-erasure.ts`)
 - [ ] CHK-08.3 Reuses 002's `feature_flags` table (no new flag table)
-- [ ] CHK-08.4 Reuses 002's `pg_cron` schedule pattern (`043_cron_006.sql`)
+- [ ] CHK-08.4 Reuses 002's `pg_cron` schedule pattern (`044_cron_006.sql`)
 - [ ] CHK-08.5 Depends on 005 Expo mobile being in production before `006_biometrics_mobile` flag is enabled (explicitly gated)
 - [ ] CHK-08.6 Reuses 004's i18n catalogs (no new locale; the 5 existing locales are extended with `settings.signals.*` keys)
 - [ ] CHK-08.7 Reuses 004's pgsodium encryption pattern for the OAuth refresh tokens
@@ -148,5 +148,5 @@ None. All brief requirements are resolved by the existing spec, plan, data-model
 - Items are numbered sequentially for easy reference
 - This checklist should be re-run after every spec/plan/tasks revision
 - The brief's "Max 3 unresolved-question markers total across all files, ideally 0" is honoured (0 markers)
-- The brief's "MIGRATION NUMBER: 039" is honoured (the data-model.md and the migration file are both `039_deep_signal_capture.sql`)
+- The brief's "MIGRATION NUMBER: 039" is honoured (the data-model.md and the migration file are both `043_deep_signal_capture.sql`)
 - Cross-feature dependencies are itemised in CHK-08 and re-surfaced in the final report

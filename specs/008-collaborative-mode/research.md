@@ -191,7 +191,7 @@ Threshold: `divergence ≥ 0.65` → signal fires (`anticheat_signals` row with 
 
 ## Cross-cutting decisions
 
-- **Migrations land additive (`041_collab.sql`).** Single migration for all 8 new tables + 1 column-add to `anticheat_signals.signal` enum. No destructive changes. Idempotent.
+- **Migrations land additive (`047_collab.sql`).** Single migration for all 8 new tables + 1 column-add to `anticheat_signals.signal` enum. No destructive changes. Idempotent.
 - **All new edge functions emit structured logs to `supabase.functions.invoke_log`** (inherited from 004) and to `collab_audit` (new) for cross-feature observability.
 - **All new feature flags live in the existing `feature_flags` table** (003). Enumerated in `quickstart.md` §11. Default OFF for all P1/P2 capabilities.
 - **COOP/COEP headers** are set at the collab route layout level (not the global app layout), so they don't impact the rest of the marketing pages.

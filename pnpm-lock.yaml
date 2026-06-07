@@ -187,6 +187,9 @@ importers:
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@20.19.41)(lightningcss@1.32.0)
 
   packages/types:
     devDependencies:
@@ -195,6 +198,10 @@ importers:
         version: 5.9.3
 
   packages/utils:
+    dependencies:
+      '@antarix/types':
+        specifier: workspace:*
+        version: link:../types
     devDependencies:
       typescript:
         specifier: ^5.5.0

@@ -23,12 +23,12 @@ Atomic, dependency-ordered tasks. `[P]` = parallelizable with siblings sharing t
 
 ## Phase 1 — Migration 039
 
-- [ ] **T010** [US1+US2+US3] Create `supabase/migrations/039_deep_signal_capture.sql` with `CREATE EXTENSION IF NOT EXISTS pgsodium;` (idempotent guard) and DDL for the 6 new tables in a single atomic migration file per the project convention
+- [ ] **T010** [US1+US2+US3] Create `supabase/migrations/043_deep_signal_capture.sql` with `CREATE EXTENSION IF NOT EXISTS pgsodium;` (idempotent guard) and DDL for the 6 new tables in a single atomic migration file per the project convention
 - [ ] T011 [P] Add `ide_sessions` (16 columns, 3 indexes, `duration_seconds` CHECK 60..1800, RLS student-sees-own + INSERT requires device-JWT) and `ide_aggregates` (11 columns, `score_contribution` CHECK ≤ 3, 4 indexes, partial unique on `(device_id, period_type, period_start) WHERE period_type='daily'`) DDL blocks to T010's migration
 - [ ] T012 [P] Add `biometric_connections` (9 columns, `oauth_refresh_token_encrypted` pgsodium-encrypted, UNIQUE on `(student_id, provider)`) and `biometric_aggregates` (13 columns, `source_hash` for dedup, partial unique on `(connection_id, period_type, period_start) WHERE period_type='daily'`) DDL blocks to T010's migration
 - [ ] T013 [P] Add `peak_window_inferences` (10 columns with 3 nullable input-hash columns, 30-day retention via `created_at` index) and `signal_audit` (10 columns, bigserial PK) DDL blocks to T010's migration
 - [ ] T014 [P] Add the append-only enforcement on `signal_audit`: `REVOKE UPDATE, DELETE ON public.signal_audit FROM authenticated, anon, service_role;` (FR-PRI-008) and the RLS policies: students see own (excluding `audit_read` rows), admins read-only, service-role INSERT-only
-- [ ] T015 [P] Create `supabase/migrations/043_cron_006.sql` with 3 `cron.schedule(...)` entries: `biometric-correlator` at `BIOMETRIC_CORRELATOR_CRON_HOUR_UTC`, `signal-purge` at `SIGNAL_PURGE_CRON_HOUR_UTC`, `signal-audit-pseudonymise` at 01:00 UTC, and `signal-audit-integrity-check` at 02:00 UTC
+- [ ] T015 [P] Create `supabase/migrations/044_cron_006.sql` with 3 `cron.schedule(...)` entries: `biometric-correlator` at `BIOMETRIC_CORRELATOR_CRON_HOUR_UTC`, `signal-purge` at `SIGNAL_PURGE_CRON_HOUR_UTC`, `signal-audit-pseudonymise` at 01:00 UTC, and `signal-audit-integrity-check` at 02:00 UTC
 
 **Checkpoint**: All 6 new tables created. Append-only enforcement on `signal_audit` is in place. `pnpm supabase db reset` is clean. RLS verified.
 

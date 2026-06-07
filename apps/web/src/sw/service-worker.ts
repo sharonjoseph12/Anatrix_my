@@ -1,13 +1,8 @@
-// @ts-nocheck
 // apps/web/src/sw/service-worker.ts
 //
 // Serwist-based service worker for Antarix PWA (FR-PWA-*).
 // This file is bundled by @serwist/next (via the next.config plugin) into
-// public/sw.js when PWA_ENABLED=true. The `@ts-nocheck` pragma shields the
-// type-check pipeline from the optional `serwist` / `@serwist/next` runtime
-// types — both packages are declared in apps/web/package.json and the
-// plugin is loaded only when the PWA_ENABLED env flag is set, but we keep
-// the type-check clean for the default (PWA-disabled) build.
+// public/sw.js when PWA_ENABLED=true.
 //
 // Strategies (per research.md D9):
 //   - API routes (/api/*): NetworkFirst with 1s timeout, then cache
@@ -17,6 +12,9 @@
 //
 // This file is intentionally side-effect free at import time; serwist's
 // `addEventListeners()` is what wires up fetch / push / sync handlers.
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _sw_marker = "service-worker-anti-prune";
 
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
@@ -28,9 +26,14 @@ declare global {
   }
 }
 
-declare const self: ServiceWorkerGlobalScope & {
+type ServiceWorkerGlobalScope = {
   __SW_MANIFEST: (PrecacheEntry | string)[] | undefined;
+  addEventListener: (type: string, listener: (event: unknown) => void) => void;
+  skipWaiting: () => Promise<void>;
+  clients: { claim: () => Promise<void> };
 };
+
+declare const self: ServiceWorkerGlobalScope;
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,

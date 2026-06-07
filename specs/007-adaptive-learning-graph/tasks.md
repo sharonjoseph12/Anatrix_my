@@ -23,7 +23,7 @@ Atomic, dependency-ordered tasks. `[P]` = parallelizable with siblings sharing t
 
 ## Phase 1 — Schema (migration 043) [parallel]
 
-- [ ] **T010 [P] Migration `043_adaptive_learning_graph.sql`** — `CREATE EXTENSION IF NOT EXISTS vector;` + 9 new tables (`alumni_profiles`, `mentor_availability_slots`, `mentor_requests`, `mentor_sessions`, `mentor_feedback`, `skill_trajectory_embeddings`, `curriculum_lessons`, `lesson_feedback`, `curriculum_cost_counters`) + HNSW index + RLS + CHECK constraints per `data-model.md`
+- [ ] **T010 [P] Migration `045_adaptive_learning_graph.sql`** — `CREATE EXTENSION IF NOT EXISTS vector;` + 9 new tables (`alumni_profiles`, `mentor_availability_slots`, `mentor_requests`, `mentor_sessions`, `mentor_feedback`, `skill_trajectory_embeddings`, `curriculum_lessons`, `lesson_feedback`, `curriculum_cost_counters`) + HNSW index + RLS + CHECK constraints per `data-model.md`
 - [ ] T011 [P] `apps/web/src/lib/supabase/types.ts` regenerate via `pnpm supabase gen types typescript`
 - [ ] T012 [P] Verify migration with `pnpm supabase db reset` clean + `psql $DATABASE_URL -c "\dx vector"` returns the vector extension
 
@@ -55,7 +55,7 @@ Atomic, dependency-ordered tasks. `[P]` = parallelizable with siblings sharing t
 ### 3b. Edge function (depends on 3a + Phase 1)
 
 - [ ] **T040 `supabase/functions/embedding-rebuild/index.ts`** — accepts `{scope: 'all' | 'user', user_id?}`; for `'all'` walks active students + opted-in alumni; for each, builds trajectory text, calls embed(), UPSERTs `skill_trajectory_embeddings`; respects a per-run time budget and resumes on next cron
-- [ ] T041 Cron entry in `supabase/migrations/044_cron_007.sql` (consolidates 007 cron jobs): nightly at 03:00 UTC run `embedding-rebuild` with `scope='all'`
+- [ ] T041 Cron entry in `supabase/migrations/046_cron_007.sql` (consolidates 007 cron jobs): nightly at 03:00 UTC run `embedding-rebuild` with `scope='all'`
 
 ---
 
@@ -91,8 +91,8 @@ Atomic, dependency-ordered tasks. `[P]` = parallelizable with siblings sharing t
 ### 5c. Cron + E2E
 
 - [ ] T080 [P] `supabase/functions/video-room-create/index.ts` — implements `VideoRoomProvider` interface; on `livekit` failure 3x, falls back to `google_meet`; logs to `supabase.functions.invoke_log`
-- [ ] T081 [P] Cron entry in `044_cron_007.sql`: `mentor-hold-release` every 5 minutes
-- [ ] T082 [P] Cron entry in `044_cron_007.sql`: `mentor-rating-recompute` nightly — recomputes `alumni_profiles.rating_avg` from last 10 sessions
+- [ ] T081 [P] Cron entry in `046_cron_007.sql`: `mentor-hold-release` every 5 minutes
+- [ ] T082 [P] Cron entry in `046_cron_007.sql`: `mentor-rating-recompute` nightly — recomputes `alumni_profiles.rating_avg` from last 10 sessions
 - [ ] T083 [P] `apps/web/src/messages/{en,hi,ta,te,mr}.json` — extend with mentor UI strings (card labels, request form copy, status messages)
 - [ ] T084 E2E `tests/e2e/mentor-match-list.spec.ts` — seed 3 alumni + 1 student; assert top-1 + cosine + slots
 - [ ] T085 E2E `tests/e2e/mentor-request-accept.spec.ts` — full request → accept → video room → calendar event flow
@@ -122,8 +122,8 @@ Atomic, dependency-ordered tasks. `[P]` = parallelizable with siblings sharing t
 - [ ] T115 [P] `apps/web/src/components/lesson-card.tsx` — explainer + exercise + reflection + alumnus link
 - [ ] T116 [P] `apps/web/src/components/lesson-feedback.tsx` — 4-button rating + free-text
 - [ ] T117 [P] `apps/web/src/app/(student)/dashboard/curriculum/page.tsx` — today's lessons
-- [ ] T118 [P] Cron entry in `044_cron_007.sql`: `curriculum-generate-daily` nightly at `CURRICULUM_CRON_HOUR_LOCAL` UTC
-- [ ] T119 [P] Cron entry in `044_cron_007.sql`: `lesson-abandon-detect` nightly — flips 48h+ unfinished lessons to `abandoned`
+- [ ] T118 [P] Cron entry in `046_cron_007.sql`: `curriculum-generate-daily` nightly at `CURRICULUM_CRON_HOUR_LOCAL` UTC
+- [ ] T119 [P] Cron entry in `046_cron_007.sql`: `lesson-abandon-detect` nightly — flips 48h+ unfinished lessons to `abandoned`
 - [ ] T120 [P] `apps/web/src/messages/{en,hi,ta,te,mr}.json` — extend with lesson UI strings (exercise, reflection, rating buttons)
 - [ ] T121 E2E `tests/e2e/daily-curriculum-generation.spec.ts` — seed 1 student + 3 similar alumni + 1 next-best-skill gap; trigger cron; assert 3 lessons + cost counter incremented
 - [ ] T122 E2E `tests/e2e/lesson-feedback-loop.spec.ts` — submit "too_hard" twice; assert next lesson difficulty dropped by 1
@@ -140,7 +140,7 @@ Atomic, dependency-ordered tasks. `[P]` = parallelizable with siblings sharing t
 - [ ] **T132 [P] `apps/web/src/components/mentor-suggestion-nudge.tsx`** — renders the suggestion inside the AI Coach inbox; CTA to `/mentors`
 - [ ] T133 [P] Hook into `curriculum-generate-daily`: when a student has a `mentor_session` with `status='completed'` in the last 7d, set `mentor_id` on the next 3 lessons + inject `mentor_tuning` into the LLM prompt
 - [ ] T134 [P] Hook into `mentor-rating-recompute` (T082): also set `alumni_profiles.specialty_drift_flag = true` when 4+ accepted sessions cross 4+ unrelated topics in 30d; clear flag on profile edit
-- [ ] T135 [P] Cron entry in `044_cron_007.sql`: `struggle-detect` every 6 hours
+- [ ] T135 [P] Cron entry in `046_cron_007.sql`: `struggle-detect` every 6 hours
 - [ ] T136 E2E `tests/e2e/struggle-loop.spec.ts` — seed 2 negative feedback rows on the same topic; trigger cron; assert nudge queued + top 3 alumni candidates returned
 
 **Checkpoint**: P2 closed loop shippable behind `007_curriculum_mentor_loop` flag.
@@ -154,7 +154,7 @@ Atomic, dependency-ordered tasks. `[P]` = parallelizable with siblings sharing t
 - [ ] T152 [P] Update `AGENTS.md` to reference 007 plan
 - [ ] T153 [P] `docs/007-rollout-runbook.md` — operator runbook for staged rollout
 - [ ] T154 [P] `docs/007-llm-cost-runbook.md` — on-call guide for cost-cap breach
-- [ ] T155 [P] Migration `044_cron_007.sql` — consolidates all 007 cron jobs (created in T041, T081, T082, T118, T119, T135)
+- [ ] T155 [P] Migration `046_cron_007.sql` — consolidates all 007 cron jobs (created in T041, T081, T082, T118, T119, T135)
 - [ ] T156 [P] Integration test `tests/integration/video-provider-selector.test.ts` — env-driven selection; missing LIVEKIT_* falls back to google_meet
 - [ ] T157 [P] `pnpm typecheck` and `pnpm lint` clean across the new files
 

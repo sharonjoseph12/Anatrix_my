@@ -69,7 +69,7 @@ pnpm supabase db push       # applies 043 in sequence (others already applied)
 ```
 
 Migration order:
-1. `043_adaptive_learning_graph.sql` — enables `pgvector`; creates 9 new tables; creates HNSW index on `skill_trajectory_embeddings.embedding`; RLS policies; CHECK constraints; updated_at triggers
+1. `045_adaptive_learning_graph.sql` — enables `pgvector`; creates 9 new tables; creates HNSW index on `skill_trajectory_embeddings.embedding`; RLS policies; CHECK constraints; updated_at triggers
 
 > **Note on migration number**: the spec brief stated `040` for this feature, but 040-042 are already taken in the live env. 043 is the next free number; confirm with the migration-ledger owner before apply.
 

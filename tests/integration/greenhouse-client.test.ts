@@ -149,7 +149,12 @@ describe("greenhouse-client.pushCandidate", () => {
   it("propagates 429 from the prospect-pool add with the parsed retry_after_ms", async () => {
     const fn = vi.fn(async (input: RequestInfo | URL): Promise<Response> => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-      if (url.endsWith("/candidates")) return jsonResponse(201, { id: 7 });
+      // Initial candidate create. The URL ends with "/candidates" but does
+      // NOT contain "/prospect_pools/".
+      if (url.endsWith("/candidates") && !url.includes("/prospect_pools/")) {
+        return jsonResponse(201, { id: 7 });
+      }
+      // Prospect-pool add. The URL contains "/prospect_pools/pool_zzz/candidates".
       if (url.includes("/prospect_pools/pool_zzz/candidates")) {
         return emptyResponse(429, { "Retry-After": "2" });
       }

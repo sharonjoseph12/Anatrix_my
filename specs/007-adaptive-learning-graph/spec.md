@@ -3,7 +3,7 @@
 **Feature Branch**: `007-adaptive-learning-graph`
 **Created**: 2026-06-07
 **Status**: Draft
-**Migration**: `040_adaptive_learning_graph.sql`
+**Migration**: `045_adaptive_learning_graph.sql`
 **Builds on**: 001 (foundation) + 002 (verified skill platform, calendar_events, pgvector) + 003 (engage & showcase, nudge inbox) + 004 (anti-cheat, next-best-skill, configurable LLM provider, weekly/monthly cost-cap pattern) + 005 (gamification — for streak data) + 006 (deep-signal-capture — for peak-window enrichment) + 008 (collaborative mode — for the `VideoRoomProvider` abstraction; will hard-fail with a clear error if 008 is not yet shipped, see plan.md)
 **Input**: User vision to convert Antarix from "verified credentials + nudges" into an adaptive learning graph where (a) every student is matched with a trajectory-similar alumnus mentor, (b) every active student receives a daily micro-curriculum tuned to their weaknesses, peak window, similar-alumni lesson progressions, and calendar free time, and (c) the curriculum and the mentor pool form a closed feedback loop.
 
@@ -129,7 +129,7 @@ The same first-year student from US2 completes the FastAPI micro-curriculum. On 
 - **FR-CC-006**: Calendar integration MUST reuse 002's `calendar_events` table (no new calendar schema).
 - **FR-CC-007**: Video room provisioning MUST go through the 008 `VideoRoomProvider` interface (no direct LiveKit/Meet API calls from app code).
 - **FR-CC-008**: Account deletion MUST drop embeddings immediately, soft-delete the rest, and purge within 30 days (per existing 002 pipeline).
-- **FR-CC-009**: pgvector extension MUST be enabled in the same migration (`040_adaptive_learning_graph.sql`) that creates `skill_trajectory_embeddings`.
+- **FR-CC-009**: pgvector extension MUST be enabled in the same migration (`045_adaptive_learning_graph.sql`) that creates `skill_trajectory_embeddings`.
 - **FR-CC-010**: The HNSW index on `skill_trajectory_embeddings.embedding` MUST use `m=16, ef_construction=64` (per research.md D2); `ef_search=40` for queries.
 
 ### Key Entities

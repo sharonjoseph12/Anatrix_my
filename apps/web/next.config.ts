@@ -43,7 +43,7 @@ type Plugin = (cfg: NextConfig) => NextConfig;
 //   - CI type-check / lint does not fail when @serwist/next is missing
 const PWA_ENABLED = process.env.PWA_ENABLED === "true";
 
-const intlWrapped: Plugin = withNextIntl;
+const intlWrapped: Plugin = withNextIntl as unknown as Plugin;
 
 function buildPwaPlugin(intl: Plugin): Plugin {
   try {
@@ -53,19 +53,13 @@ function buildPwaPlugin(intl: Plugin): Plugin {
       typeof serwistMod === "function" ? serwistMod : serwistMod.default;
     if (typeof withSerwist !== "function") return intl;
     const withPwa = withSerwist({
-      // The serwist plugin walks the `sw` directory by default.
       swSrc: "src/sw/service-worker.ts",
       swDest: "public/sw.js",
       reloadOnOnline: false,
       disable: false,
     });
-    // Compose: serwist wraps the intl-wrapped config.
-    return (cfg) => withPwa(intl(cfg));
+    return (cfg: NextConfig) => (withPwa as Plugin)(intl(cfg));
   } catch {
-    // @serwist/next not installed (e.g. before `pnpm install` runs the new
-    // deps). Fall through to the intl-only config. The manifest is still
-    // served from app/manifest.ts, so basic PWA install will work; only
-    // the service-worker is missing.
     return intl;
   }
 }

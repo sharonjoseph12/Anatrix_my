@@ -3,13 +3,13 @@
 **Branch**: `007-adaptive-learning-graph` | **Date**: 2026-06-07 | **Spec**: [spec.md](file:///c:/Users/Sharon/OneDrive/Desktop/Anatrix_my/specs/007-adaptive-learning-graph/spec.md)
 **Input**: Feature specification from `specs/007-adaptive-learning-graph/spec.md`
 **Builds on**: 001 (foundation) + 002 (verified skill platform, calendar_events, pgvector) + 003 (engage & showcase, nudge inbox) + 004 (anti-cheat, next-best-skill, configurable LLM provider, weekly/monthly cost-cap pattern) + 005 (gamification — streak data) + 006 (deep-signal-capture — peak-window enrichment) + 008 (collaborative mode — `VideoRoomProvider` abstraction; **hard prerequisite for US1 mentor match**)
-**Migration**: `040_adaptive_learning_graph.sql` (single additive migration; 9 new tables)
+**Migration**: `045_adaptive_learning_graph.sql` (single additive migration; 9 new tables)
 
 ## Summary
 
 Three P1/P2 product moves on top of 001-006: (US1, P1) alumni mentorship match via trajectory embeddings + cosine similarity, with 1:1 video calls; (US2, P1) daily adaptive micro-curriculum, 3 lessons/day per active student, tuned to next-best-skill, peak window, similar-alumni progression, and calendar free time; (US3, P2) curriculum-mentor closed loop where 2+ lesson struggles auto-suggest a mentor and accepted sessions re-weight the next 3 lessons. All three are gated by feature flags, all share the 004 LLM client + cost-cap pattern, and all reuse 002's `calendar_events` and 003's nudge dispatcher.
 
-**Technical approach**: Reuse the entire 001-006 stack. Add one additive SQL migration (`040_adaptive_learning_graph.sql`) creating 9 new tables, enable `pgvector` if not already on, and create an HNSW index on the embedding column. Add 4 new edge functions (`embedding-job`, `curriculum-generator`, `curriculum-struggle-detector`, `mentor-match-batch` for backfill), 6 new Next.js API routes, 4 new UI pages, and shared types under `packages/types/`. All new surfaces behind feature flags.
+**Technical approach**: Reuse the entire 001-006 stack. Add one additive SQL migration (`045_adaptive_learning_graph.sql`) creating 9 new tables, enable `pgvector` if not already on, and create an HNSW index on the embedding column. Add 4 new edge functions (`embedding-job`, `curriculum-generator`, `curriculum-struggle-detector`, `mentor-match-batch` for backfill), 6 new Next.js API routes, 4 new UI pages, and shared types under `packages/types/`. All new surfaces behind feature flags.
 
 ## Technical Context
 
@@ -87,7 +87,7 @@ Inherits 001-006 layout unchanged. New files:
 ```text
 supabase/
 ├── migrations/
-│   └── 040_adaptive_learning_graph.sql    # alumni_profiles, mentor_availability_slots,
+│   └── 045_adaptive_learning_graph.sql    # alumni_profiles, mentor_availability_slots,
 │                                          # mentor_requests, mentor_sessions, mentor_feedback,
 │                                          # skill_trajectory_embeddings, curriculum_lessons,
 │                                          # lesson_feedback, curriculum_cost_counters,

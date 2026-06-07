@@ -1,6 +1,7 @@
 'use client';
 
-import { useLocale, usePathname, useRouter } from 'next-intl';
+import { useLocale } from 'next-intl';
+import { usePathname, useRouter } from 'next/navigation';
 import { ChangeEvent, useTransition } from 'react';
 import { defaultLocale, locales, localeLabels, type Locale } from './config';
 

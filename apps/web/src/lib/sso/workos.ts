@@ -4,12 +4,9 @@ import "server-only";
 // T-SSO-001..006 — WorkOS SAML broker wrapper.
 //
 // D4 (research): WorkOS is the SAML 2.0 IdP broker. The @workos-inc/node
-// SDK is added to apps/web/package.json but pnpm install may not have run
-// in every environment, so we lazy-import the module and degrade to a
-// thrown "not configured" error if the import fails. The TypeScript types
-// from `@workos-inc/node` are not re-exported here on purpose — the
-// dynamic import path keeps the rest of the codebase compiling even when
-// the SDK is not present in node_modules.
+// SDK is added to apps/web/package.json. We keep the import lazy so a
+// missing SDK produces a clear runtime error rather than a compile-time
+// one (handy for environments where the SDK hasn't been installed yet).
 
 export interface WorkOsProfile {
   id: string;
@@ -20,23 +17,23 @@ export interface WorkOsProfile {
   raw_attributes?: Record<string, unknown>;
 }
 
-let workosClient: any = null;
+let workosClient: unknown = null;
 
-async function getClient(): Promise<any> {
+async function getClient(): Promise<unknown> {
   if (workosClient) return workosClient;
   if (!process.env.WORKOS_API_KEY) {
     throw new Error("WORKOS_API_KEY is not set");
   }
-  let mod: any;
   try {
-    // @ts-expect-error - SDK may not be installed in every environment; lazy import.
-    mod = await import("@workos-inc/node");
-  } catch (err) {
+    const mod = (await import("@workos-inc/node")) as unknown as {
+      WorkOS: new (apiKey?: string) => unknown;
+    };
+    workosClient = new mod.WorkOS(process.env.WORKOS_API_KEY);
+  } catch {
     throw new Error(
       "WorkOS SDK is not installed. Run `pnpm install` in apps/web to add @workos-inc/node.",
     );
   }
-  workosClient = new mod.WorkOS(process.env.WORKOS_API_KEY);
   return workosClient;
 }
 
@@ -46,7 +43,16 @@ export async function getAuthorizationUrl(
 ): Promise<string> {
   if (!process.env.WORKOS_CLIENT_ID) throw new Error("WORKOS_CLIENT_ID is not set");
   if (!process.env.WORKOS_REDIRECT_URI) throw new Error("WORKOS_REDIRECT_URI is not set");
-  const client = await getClient();
+  const client = (await getClient()) as {
+    sso: {
+      getAuthorizationUrl: (opts: {
+        connection: string;
+        clientId: string;
+        redirectUri: string;
+        state: string;
+      }) => Promise<string> | string;
+    };
+  };
   return client.sso.getAuthorizationUrl({
     connection: connectionId,
     clientId: process.env.WORKOS_CLIENT_ID,
@@ -59,16 +65,38 @@ export async function exchangeCode(
   code: string,
 ): Promise<{ profile: WorkOsProfile; access_token: string }> {
   if (!process.env.WORKOS_CLIENT_ID) throw new Error("WORKOS_CLIENT_ID is not set");
-  const client = await getClient();
-  const result = await client.sso.authenticateWithCode({
+  const client = (await getClient()) as {
+    sso: {
+      authenticateWithCode: (opts: {
+        clientId: string;
+        code: string;
+      }) => Promise<unknown>;
+    };
+  };
+  const result = (await client.sso.authenticateWithCode({
     clientId: process.env.WORKOS_CLIENT_ID,
     code,
-  });
+  })) as {
+    user?: {
+      id?: string;
+      email?: string;
+      firstName?: string;
+      first_name?: string;
+      lastName?: string;
+      last_name?: string;
+      organizationId?: string;
+      organization_id?: string;
+      rawAttributes?: Record<string, unknown>;
+      raw_attributes?: Record<string, unknown>;
+    };
+    accessToken?: string;
+    access_token?: string;
+  };
   const u = result?.user ?? {};
   return {
     profile: {
-      id: u.id,
-      email: u.email,
+      id: u.id ?? "",
+      email: u.email ?? "",
       first_name: u.firstName ?? u.first_name,
       last_name: u.lastName ?? u.last_name,
       organization_id: u.organizationId ?? u.organization_id,

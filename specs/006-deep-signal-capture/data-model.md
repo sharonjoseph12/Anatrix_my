@@ -8,7 +8,7 @@
 
 | Migration | Tables Added | Tables Extended | Notes |
 |---|---|---|---|
-| `039_deep_signal_capture.sql` | `ide_sessions`, `ide_aggregates`, `biometric_connections`, `biometric_aggregates`, `peak_window_inferences`, `signal_audit` | none | 6 new tables; 1 cron entry bundled in 043_cron_006.sql per project convention |
+| `043_deep_signal_capture.sql` | `ide_sessions`, `ide_aggregates`, `biometric_connections`, `biometric_aggregates`, `peak_window_inferences`, `signal_audit` | none | 6 new tables; 1 cron entry bundled in 044_cron_006.sql per project convention |
 
 Total new tables: **6**. Total extended tables: **0** (we add new, never modify).
 

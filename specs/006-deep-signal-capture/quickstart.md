@@ -62,12 +62,12 @@ BIOMETRIC_CORRELATOR_CRON_HOUR_UTC=4              # 04:00 UTC nightly
 ## 2. Migrations (run in order)
 
 ```bash
-pnpm supabase db push       # applies 039 (and 043_cron_006.sql in the same release)
+pnpm supabase db push       # applies 039 (and 044_cron_006.sql in the same release)
 ```
 
 Migration order:
-1. `039_deep_signal_capture.sql` — 6 new tables, RLS, append-only enforcement on `signal_audit`
-2. `043_cron_006.sql` — `biometric-correlator` nightly, `signal-purge` nightly, `signal-audit-integrity-check` nightly
+1. `043_deep_signal_capture.sql` — 6 new tables, RLS, append-only enforcement on `signal_audit`
+2. `044_cron_006.sql` — `biometric-correlator` nightly, `signal-purge` nightly, `signal-audit-integrity-check` nightly
 
 ## 3. New Edge Functions to deploy
 

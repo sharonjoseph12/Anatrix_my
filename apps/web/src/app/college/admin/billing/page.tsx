@@ -31,7 +31,7 @@ export default async function BillingPage() {
   // Resolve the admin's institution via institution_members.
   const { data: membership } = await supabase
     .from("institution_members")
-    .select("institution_id,institutions:public.institutions(name,type)")
+    .select("institution_id")
     .eq("user_id", user.id)
     .in("role", ["admin", "placement_officer"])
     .order("joined_at", { ascending: true })
@@ -48,9 +48,15 @@ export default async function BillingPage() {
     );
   }
   const instId = (membership as { institution_id: string }).institution_id;
-  const inst = (membership as unknown as {
-    institutions: { name: string; type: string } | null;
-  }).institutions;
+
+  // Look up the institution name separately to avoid the embedded-relationship
+  // parse error in the Supabase generated types for this codebase.
+  const { data: instRow } = await supabase
+    .from("institutions")
+    .select("name,type")
+    .eq("id", instId)
+    .maybeSingle();
+  const inst = (instRow as { name: string; type: string } | null) ?? null;
 
   const { data: contracts } = await supabase
     .from("outcome_contracts")

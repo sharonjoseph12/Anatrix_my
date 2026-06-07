@@ -13,8 +13,10 @@ export function normalizeLocale(
 ): SupportedLocale {
   if (!input) return DEFAULT_LOCALE;
   if (isSupportedLocale(input)) return input;
-  const prefix = input.split("-")[0].toLowerCase();
-  return isSupportedLocale(prefix) ? prefix : DEFAULT_LOCALE;
+  const prefix = input.split("-")[0];
+  if (!prefix) return DEFAULT_LOCALE;
+  const lower = prefix.toLowerCase();
+  return isSupportedLocale(lower) ? lower : DEFAULT_LOCALE;
 }
 
 export { SUPPORTED_LOCALES, DEFAULT_LOCALE, isSupportedLocale };

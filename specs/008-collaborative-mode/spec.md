@@ -4,7 +4,7 @@
 **Created**: 2026-06-07
 **Status**: Draft
 **Builds on**: 001 (foundation) + 002 (verified skill platform) + 003 (engage & showcase) + 004 (anti-cheat, public API, mock interviews, hackathon patterns)
-**Migration**: `041_collab.sql` (additive; see `plan.md` §1 for migration-ledger reconciliation)
+**Migration**: `047_collab.sql` (additive; see `plan.md` §1 for migration-ledger reconciliation)
 **Input**: Four product moves on top of the 001-004 stack — live multiplayer coding, derived teamwork scoring, anti-collusion/privacy, and recruiter observe mode — that together convert individual verification into a defensible *team* skill credential.
 
 ## Why this exists
@@ -194,4 +194,4 @@ These were considered and explicitly deferred:
 - **WebContainer is acceptable for v1**: Browser-side sandbox covers JS/TS/Python with no infra; remote Firecracker microVM covers all other languages via Fly.io (one Fly.io app per region).
 - **Per-room consent is the privacy primitive**: We do not add a global "allow recruiters to observe me" toggle; consent is room-scoped, time-bounded, and revocable mid-session.
 - **Recording retention is 90 days by default**: Configurable per-tenant; recordings older than retention are purged; `collab_artifacts` (code, transcript) are retained per 002's audit policy (1 year).
-- **Migration 041 conflicts**: The migration ledger already has `041_webhooks.sql` (from 005). The 008 plan proposes `041_collab.sql` to align with the brief's stated number; if a conflict surfaces at apply-time, the next free number is `043` (042 is also taken by `042_verify_api_key.sql`). This is flagged in `plan.md` §1 and `checklists/requirements.md` CHK-OC-1.
+- **Migration 041 conflicts**: The migration ledger already has `047_webhooks.sql` (from 005). The 008 plan proposes `047_collab.sql` to align with the brief's stated number; if a conflict surfaces at apply-time, the next free number is `043` (042 is also taken by `042_verify_api_key.sql`). This is flagged in `plan.md` §1 and `checklists/requirements.md` CHK-OC-1.

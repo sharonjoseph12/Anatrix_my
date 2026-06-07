@@ -61,7 +61,7 @@ Inherits 001-005 layout unchanged. New files:
 ```text
 supabase/
 ├── migrations/
-│   └── 039_deep_signal_capture.sql     # ide_sessions, ide_aggregates,
+│   └── 043_deep_signal_capture.sql     # ide_sessions, ide_aggregates,
 │                                       # biometric_connections, biometric_aggregates,
 │                                       # peak_window_inferences, signal_audit
 └── functions/

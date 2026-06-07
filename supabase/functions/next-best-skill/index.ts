@@ -121,8 +121,13 @@ function computeRecommendations(
   const studentSet = new Set(student.current_skills);
   const aggregated = new Map<string, { count: number; companies: string[] }>();
   for (const a of kept) {
+    const preSet = new Set(a.pre_placement_skills);
     const next = new Set<string>();
-    for (const s of a.post_placement_skills) if (!studentSet.has(s)) next.add(s);
+    for (const s of a.post_placement_skills) {
+      if (preSet.has(s)) continue;
+      if (studentSet.has(s)) continue;
+      next.add(s);
+    }
     for (const skill of next) {
       const entry = aggregated.get(skill) ?? { count: 0, companies: [] };
       entry.count += 1;

@@ -3,7 +3,7 @@
 **Branch**: `008-collaborative-mode` | **Date**: 2026-06-07 | **Spec**: [spec.md](file:///c:/Users/Sharon/OneDrive/Desktop/Anatrix_my/specs/008-collaborative-mode/spec.md)
 **Input**: Feature specification from `specs/008-collaborative-mode/spec.md`
 **Builds on**: 001 (foundation) + 002 (verified skill platform + W3C VC) + 003 (engage & showcase) + 004 (anti-cheat + ATS + i18n + hackathon + mock-interview + public-API patterns)
-**Migration**: `041_collab.sql` (single additive migration for all 8 new tables; see §1 for migration-ledger reconciliation)
+**Migration**: `047_collab.sql` (single additive migration for all 8 new tables; see §1 for migration-ledger reconciliation)
 
 ## Summary
 
@@ -13,7 +13,7 @@ Four product moves on top of the 001-004 stack: live multiplayer coding (US1, P1
 
 ## §1. Migration-ledger reconciliation
 
-The brief states migration `041`. The live migration ledger already has `041_webhooks.sql` (from 005, 2026-05-22) and `042_verify_api_key.sql`. This plan uses `041_collab.sql` per brief instruction, with a fallback to `043_collab.sql` if the apply-time conflict surfaces (the 005 webhooks migration is itself additive, so the renumber is safe if applied before any tooling asserts the chronological order). The migration is **idempotent** (`if not exists` + `drop policy if exists` + `create policy`) per the project standard, so re-applying after a renumber is a no-op.
+The brief states migration `041`. The live migration ledger already has `047_webhooks.sql` (from 005, 2026-05-22) and `042_verify_api_key.sql`. This plan uses `047_collab.sql` per brief instruction, with a fallback to `043_collab.sql` if the apply-time conflict surfaces (the 005 webhooks migration is itself additive, so the renumber is safe if applied before any tooling asserts the chronological order). The migration is **idempotent** (`if not exists` + `drop policy if exists` + `create policy`) per the project standard, so re-applying after a renumber is a no-op.
 
 ## Technical Context
 
@@ -68,7 +68,7 @@ Inherits 001-004 layout unchanged. New files:
 ```text
 supabase/
 ├── migrations/
-│   └── 041_collab.sql                       # NEW: 8 tables + 1 enum extension
+│   └── 047_collab.sql                       # NEW: 8 tables + 1 enum extension
 └── functions/
     ├── collab-room-create/                  # NEW: creates room + issues host tokens
     ├── collab-room-end/                     # NEW: ends room, persists artifact, enqueues scorer
@@ -181,7 +181,7 @@ tests/
     └── collab-consent.test.ts                            # NEW
 ```
 
-**Structure Decision**: Pure additive. No new top-level packages, no monorepo split, no new build pipelines for the web app. The Firecracker sandbox service is a *new* standalone deployable (`apps/sandbox-firecracker/`) — it's a Node + WS service that boots Firecracker microVMs, and it ships as a Fly.io app per region. Every new capability is one or more of: a Supabase Edge Function (HTTP-triggered or cron), a Next.js API route (auth-gated by Supabase RLS), a UI page rendered inside the existing 3-portal app, or a Postgres table sitting in the single additive migration `041_collab.sql`.
+**Structure Decision**: Pure additive. No new top-level packages, no monorepo split, no new build pipelines for the web app. The Firecracker sandbox service is a *new* standalone deployable (`apps/sandbox-firecracker/`) — it's a Node + WS service that boots Firecracker microVMs, and it ships as a Fly.io app per region. Every new capability is one or more of: a Supabase Edge Function (HTTP-triggered or cron), a Next.js API route (auth-gated by Supabase RLS), a UI page rendered inside the existing 3-portal app, or a Postgres table sitting in the single additive migration `047_collab.sql`.
 
 ## Complexity Tracking
 

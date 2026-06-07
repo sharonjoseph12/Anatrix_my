@@ -3,7 +3,7 @@
 **Feature Branch**: `009-onchain-mirror`
 **Created**: 2026-06-07
 **Status**: Draft
-**Migration**: `042_onchain_mirror.sql` (see [data-model.md](file:///c:/Users/Sharon/OneDrive/Desktop/Anatrix_my/specs/009-onchain-mirror/data-model.md) §0 — number reserved; if 042 is occupied at apply time, the file is renamed to the next free slot without changing the spec)
+**Migration**: `049_onchain_mirror.sql` (see [data-model.md](file:///c:/Users/Sharon/OneDrive/Desktop/Anatrix_my/specs/009-onchain-mirror/data-model.md) §0 — number reserved; if 042 is occupied at apply time, the file is renamed to the next free slot without changing the spec)
 **Builds on**: 001 (foundation) + 002 (W3C Verifiable Credentials + revocation registry) + 003 (engagement) + 004 (defensibility, especially the audit/logging patterns) + 007 (adaptive learning graph; uses similar per-student opt-in patterns)
 **Input**: User originally asked for "soulbound NFT" credentials. After a regulatory + cost + utility review (see [research.md](file:///c:/Users/Sharon/OneDrive/Desktop/Anatrix_my/specs/009-onchain-mirror/research.md) §D1), we declined the literal NFT path and scoped this feature as an **optional, hash-only on-chain mirror** of existing 002 W3C VCs onto the Ethereum Attestation Service (EAS) on Coinbase Base L2.
 

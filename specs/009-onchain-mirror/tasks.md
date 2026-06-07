@@ -1,251 +1,187 @@
----
+# Tasks: 009 — On-Chain Mirror (EAS on Base L2)
 
-description: "Task list template for feature implementation"
----
+**Feature**: `009-onchain-mirror`
+**Generated**: 2026-06-07
+**Source**: `specs/009-onchain-mirror/spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/api.md`, `quickstart.md`
 
-# Tasks: [FEATURE NAME]
-
-**Input**: Design documents from `/specs/[###-feature-name]/`
-**Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
-
-**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
-
-**Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
-
-## Format: `[ID] [P?] [Story] Description`
-
-- **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
-- Include exact file paths in descriptions
-
-## Path Conventions
-
-- **Single project**: `src/`, `tests/` at repository root
-- **Web app**: `backend/src/`, `frontend/src/`
-- **Mobile**: `api/src/`, `ios/src/` or `android/src/`
-- Paths shown below assume single project - adjust based on plan.md structure
-
-<!-- 
-  ============================================================================
-  IMPORTANT: The tasks below are SAMPLE TASKS for illustration purposes only.
-  
-  The /speckit-tasks command MUST replace these with actual tasks based on:
-  - User stories from spec.md (with their priorities P1, P2, P3...)
-  - Feature requirements from plan.md
-  - Entities from data-model.md
-  - Endpoints from contracts/
-  
-  Tasks MUST be organized by user story so each story can be:
-  - Implemented independently
-  - Tested independently
-  - Delivered as an MVP increment
-  
-  DO NOT keep these sample tasks in the generated tasks.md file.
-  ============================================================================
--->
-
-## Phase 1: Setup (Shared Infrastructure)
-
-**Purpose**: Project initialization and basic structure
-
-- [ ] T001 Create project structure per implementation plan
-- [ ] T002 Initialize [language] project with [framework] dependencies
-- [ ] T003 [P] Configure linting and formatting tools
+Atomic, dependency-ordered tasks. `[P]` = parallelizable with siblings sharing the same phase prefix. **Bold** tasks are critical-path. `[US1/US2/US3]` labels map to spec user stories for traceability.
 
 ---
 
-## Phase 2: Foundational (Blocking Prerequisites)
+## Phase 0 — Pre-flight
 
-**Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented
+- [x] T001 [P] Verify 001-008 task completion (existing migrations 001-042 present, including 002 W3C VC infra and 041 webhooks; the 049_verify_api_key.sql co-exists — see data-model.md §0 for the naming note)
+- [x] T002 [P] Survey existing edge functions; confirm new function names (`chain-mirror-attest`, `chain-mirror-dispatcher`, `chain-unmirror-dispatcher`, `chain-mirror-resolver`) don't clash
+- [ ] T003 [P] Add 009 env vars to `.env.local.example` (per quickstart §1)
+- [ ] T004 [P] Add 009 env vars to `turbo.json` `globalEnv` array
+- [ ] T005 [P] Add new dependencies to `apps/web/package.json`: `@ethereum-attestation-service/sdk`, `siwe`, `viem` (if not already present from 001), `@noble/hdkey`; and to `hardhat/package.json`: `hardhat`, `@ethereum-attestation-service/contracts`, `typescript`, `ts-node`
+- [ ] T006 [P] Create `hardhat/` subproject (new top-level dir): `hardhat.config.ts`, `contracts/`, `scripts/deploy-eas.ts`, `scripts/register-schema.ts`, `package.json`
+- [ ] T007 [P] Create `pnpm-workspace.yaml` (or `turbo.json` pipeline) update to include the `hardhat` workspace
 
-**⚠️ CRITICAL**: No user story work can begin until this phase is complete
-
-Examples of foundational tasks (adjust based on your project):
-
-- [ ] T004 Setup database schema and migrations framework
-- [ ] T005 [P] Implement authentication/authorization framework
-- [ ] T006 [P] Setup API routing and middleware structure
-- [ ] T007 Create base models/entities that all stories depend on
-- [ ] T008 Configure error handling and logging infrastructure
-- [ ] T009 Setup environment configuration management
-
-**Checkpoint**: Foundation ready - user story implementation can now begin in parallel
+**Checkpoint**: Env + workspace ready. No code yet.
 
 ---
 
-## Phase 3: User Story 1 - [Title] (Priority: P1) 🎯 MVP
+## Phase 1 — Schema (migration 042)
 
-**Goal**: [Brief description of what this story delivers]
+- [ ] **T010** [US1] `supabase/migrations/049_onchain_mirror.sql` — 6 tables: `chain_mirror_audit`, `chain_mirror_queue`, `chain_mirror_consents`, `chain_mirror_revocations`, `chain_reputation_bonuses`, `chain_mirror_schema`; column additions on `users` (+`onchain_mirror_opt_in`, +`wallet_address`, +`custodial_address_index`) and `institutions` (+`onchain_mirror_enabled`); all indexes, CHECK constraints, RLS policies, and the `chain_mirror_audit_immutable` trigger per [data-model.md](file:///c:/Users/Sharon/OneDrive/Desktop/Anatrix_my/specs/009-onchain-mirror/data-model.md)
+- [ ] T011 [P] `supabase/migrations/050_cron_009.sql` — register 2 cron jobs on `pg_cron`: `chain-mirror-dispatcher` every 5 min, `chain-unmirror-dispatcher` every 15 min
 
-**Independent Test**: [How to verify this story works on its own]
-
-### Tests for User Story 1 (OPTIONAL - only if tests requested) ⚠️
-
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
-
-- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
-
-### Implementation for User Story 1
-
-- [ ] T012 [P] [US1] Create [Entity1] model in src/models/[entity1].py
-- [ ] T013 [P] [US1] Create [Entity2] model in src/models/[entity2].py
-- [ ] T014 [US1] Implement [Service] in src/services/[service].py (depends on T012, T013)
-- [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
-- [ ] T016 [US1] Add validation and error handling
-- [ ] T017 [US1] Add logging for user story 1 operations
-
-**Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
+**Checkpoint**: `pnpm supabase db reset` clean. RLS verified. `chain_mirror_audit_immutable` trigger blocks UPDATE/DELETE.
 
 ---
 
-## Phase 4: User Story 2 - [Title] (Priority: P2)
+## Phase 2 — Shared types + utilities
 
-**Goal**: [Brief description of what this story delivers]
-
-**Independent Test**: [How to verify this story works on its own]
-
-### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
-
-- [ ] T018 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T019 [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
-
-### Implementation for User Story 2
-
-- [ ] T020 [P] [US2] Create [Entity] model in src/models/[entity].py
-- [ ] T021 [US2] Implement [Service] in src/services/[service].py
-- [ ] T022 [US2] Implement [endpoint/feature] in src/[location]/[file].py
-- [ ] T023 [US2] Integrate with User Story 1 components (if needed)
-
-**Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
+- [ ] T020 [P] Create `packages/types/onchain-mirror.ts` — TS types for all 6 tables; mirror + unmirror + audit action unions; consent version string union; chain ID literal (`8453` for Base mainnet)
+- [ ] T021 [P] Create `packages/types/eas.ts` — `EASAttestation`, `EASSchema`, `attesterReputation` shapes; `decodeAttestationData(schema, data) → { vcHash, revocationPointer, scoreSnapshot }`
+- [ ] T022 [P] Create `packages/utils/canonical-json.ts` — RFC 8785 implementation; PII allowlist helper `stripVCForHash(vc) → {credentialType, snapshotOverallScore, snapshotPerSkill, snapshotTakenAt}`
+- [ ] T023 [P] Create `packages/utils/wei-usd.ts` — `weiToUsd(wei, ethUsdPrice) → number` with the 6-decimal rounding
+- [ ] T024 [P] Update `packages/types/database.ts` with new table types (regenerate via `pnpm supabase gen types typescript`)
 
 ---
 
-## Phase 5: User Story 3 - [Title] (Priority: P3)
+## Phase 3 — EAS SDK + lib utilities (US1 foundation)
 
-**Goal**: [Brief description of what this story delivers]
+- [ ] **T030** [US1] `apps/web/src/lib/onchain/eas-client.ts` — wrap `@ethereum-attestation-service/sdk` + viem: `attest({schema, data, recipient})`, `revoke({schema, uid})`, `getAttestation(uid)`, `registerSchema(string)`, `getSchema(uid)`; all read from env + KMS
+- [ ] T031 [P] `apps/web/src/lib/onchain/canonical-json.ts` — production version: imports `packages/utils/canonical-json` and re-exports with the PII strip applied; `computeVCHash(vc) → 0x...{bytes32}`
+- [ ] T032 [P] `apps/web/src/lib/onchain/gas-oracle.ts` — `getProjectedCost(estimatedGas, gasPriceGwei, ethUsdPrice) → { wei, usd }`; `fetchGasPrice()` (Base RPC `eth_gasPrice`); `fetchEthUsdPrice()` (Coinbase or CoinGecko); `shouldDefer(projectedCostUsd, threshold) → boolean`
+- [ ] T033 [P] `apps/web/src/lib/onchain/siwe-verify.ts` — `verifySiwe(message, signature) → { address, nonce, issuedAt }`; nonce replay protection via `siwe_nonces` table (created in 042 if needed) or in-memory with a 5-min TTL
+- [ ] T034 [P] `apps/web/src/lib/onchain/hd-derive.ts` — `deriveCustodialAddress(seed, index) → { address, privateKey }` using `@noble/hdkey`; derivation path `m/44'/60'/0'/0/{index}`; seed fetched from Vault
+- [ ] T035 [P] `apps/web/src/lib/onchain/reputation-bonus.ts` — `issueReputationBonus(recipient, snapshotScore) → bonusAttestationUid` (only if `snapshotScore >= 90` AND `REPUTATION_BONUS_THRESHOLD` env)
+- [ ] T036 [P] `apps/web/src/lib/kill-switch.ts` — `evaluateMirrorGate(studentId) → { allowed, reason? }`; checks master → tenant → student in order; returns one of `{allowed}`, `{denied: 'kill_switch_active'}`, `{denied: 'tenant_disabled'}`, `{denied: 'opt_in_required'}`
 
-**Independent Test**: [How to verify this story works on its own]
-
-### Tests for User Story 3 (OPTIONAL - only if tests requested) ⚠️
-
-- [ ] T024 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T025 [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
-
-### Implementation for User Story 3
-
-- [ ] T026 [P] [US3] Create [Entity] model in src/models/[entity].py
-- [ ] T027 [US3] Implement [Service] in src/services/[service].py
-- [ ] T028 [US3] Implement [endpoint/feature] in src/[location]/[file].py
-
-**Checkpoint**: All user stories should now be independently functional
+**Checkpoint**: All lib utilities + EAS client available; kill-switch resolver returns the right reason on each gate.
 
 ---
 
-[Add more user story phases as needed, following the same pattern]
+## Phase 4 — Attestation edge function + dispatcher (US1)
+
+- [ ] **T040** [US1] `supabase/functions/chain-mirror-attest/index.ts` — entry point for ad-hoc mirror submissions (rarely used; the dispatcher does the bulk of work). Validates input, calls `evaluateMirrorGate`, calls `easClient.attest`, writes `chain_mirror_audit` with full tx details
+- [ ] **T041** [US1] `supabase/functions/chain-mirror-dispatcher/index.ts` — cron entry (every 5 min): SELECT FOR UPDATE on `chain_mirror_queue` rows where `status IN ('pending','failed')` AND `next_attempt_at <= now()`; for each: evaluate gate, fetch gas price, defer if too high, compute vcHash, sign + submit EAS.attest, write audit + queue UPDATE
+- [ ] T042 [P] [US1] `supabase/functions/chain-mirror-dispatcher/backoff.ts` — pure fn: `nextBackoffDelay(attemptCount) → minutes`; schedule: 1m, 5m, 25m, 2h, 12h; return `null` when attemptCount >= 5 (dead-letter)
+- [ ] T043 [P] [US1] `supabase/functions/chain-unmirror-dispatcher/index.ts` — cron entry (every 15 min): walks unmirror rows (can be a separate `chain_unmirror_queue` view or a `chain_mirror_queue` row with `action='unmirror'`); calls `easClient.revoke`; writes `chain_mirror_revocations` + audit
+- [ ] T044 [US1] Wire `chain-mirror-dispatcher` to the existing `pg_cron` extension (per migration 043)
+- [ ] T045 [US1] Wire `chain-unmirror-dispatcher` to `pg_cron`
+- [ ] T046 [P] [US1] Unit test `tests/integration/eas-client.test.ts` — uses local Hardhat; sign + submit a mirror; assert audit row + queue transition
+- [ ] T047 [P] [US1] Unit test `tests/integration/canonical-json.test.ts` — PII strip; stable hash for the same VC; different hash for a different VC
+- [ ] T048 [P] [US1] Unit test `tests/integration/gas-oracle.test.ts` — backoff schedule; defer when over threshold; cost calculation
+- [ ] T049 [P] [US1] Unit test `tests/integration/siwe-verify.test.ts` — message + signature roundtrip; replay rejection
+
+**Checkpoint**: US1 backend shippable behind `009_onchain_mirror_enabled=false` (master flag).
 
 ---
 
-## Phase N: Polish & Cross-Cutting Concerns
+## Phase 5 — Verification UI + resolver (US2)
 
-**Purpose**: Improvements that affect multiple user stories
+- [ ] **T060** [US2] `apps/web/src/app/verify/onchain/[attestation_uid]/page.tsx` — public SSR page; calls `chain-mirror-resolver`; renders the unified view (banner + 002 VC card + collapsible VC JSON drawer + on-chain transaction details); no auth; rate-limited
+- [ ] T061 [P] [US2] `apps/web/src/app/verify/onchain/[attestation_uid]/opengraph-image.tsx` — OG preview card showing "Mirrored on Base L2 by Antarix — score 87" for sharing
+- [ ] T062 [P] [US2] `supabase/functions/chain-mirror-resolver/index.ts` — public; reads EAS attestation via viem public client (no signer); dereferences the `revocationPointer` to the 002 public page; returns unified view JSON; rate-limited per IP via the `ONCHAIN_RESOLVER_RATE_LIMIT_RPM` env
+- [ ] T063 [P] [US2] `apps/web/src/lib/onchain/resolver-cache.ts` — 5-minute in-memory LRU cache for resolver responses (Base L2 finality is ~2s, so a 5-min cache is safe and reduces RPC calls)
+- [ ] T064 [US2] `apps/web/src/app/api/v1/verify/onchain/[attestation_uid]/route.ts` — JSON variant of the resolver for API consumers (returns `Accept: application/json` shape)
+- [ ] T065 [P] [US2] `apps/web/src/app/(company)/candidates/[id]/onchain-badge.tsx` — recruiter dashboard widget: "Has on-chain mirror" badge with mirror count + latest attestation's EAS Scan link; shown when student has ≥ 1 confirmed mirror
+- [ ] T066 [P] [US2] E2E `tests/e2e/onchain-resolver-public.spec.ts` — happy path: confirmed mirror → no-auth GET → 200 with all fields; revocation path: revoked 002 → re-fetch → disclosure shown; RPC outage path: mock Base RPC timeout → 503
 
-- [ ] TXXX [P] Documentation updates in docs/
-- [ ] TXXX Code cleanup and refactoring
-- [ ] TXXX Performance optimization across all stories
-- [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
-- [ ] TXXX Security hardening
-- [ ] TXXX Run quickstart.md validation
-
----
-
-## Dependencies & Execution Order
-
-### Phase Dependencies
-
-- **Setup (Phase 1)**: No dependencies - can start immediately
-- **Foundational (Phase 2)**: Depends on Setup completion - BLOCKS all user stories
-- **User Stories (Phase 3+)**: All depend on Foundational phase completion
-  - User stories can then proceed in parallel (if staffed)
-  - Or sequentially in priority order (P1 → P2 → P3)
-- **Polish (Final Phase)**: Depends on all desired user stories being complete
-
-### User Story Dependencies
-
-- **User Story 1 (P1)**: Can start after Foundational (Phase 2) - No dependencies on other stories
-- **User Story 2 (P2)**: Can start after Foundational (Phase 2) - May integrate with US1 but should be independently testable
-- **User Story 3 (P3)**: Can start after Foundational (Phase 2) - May integrate with US1/US2 but should be independently testable
-
-### Within Each User Story
-
-- Tests (if included) MUST be written and FAIL before implementation
-- Models before services
-- Services before endpoints
-- Core implementation before integration
-- Story complete before moving to next priority
-
-### Parallel Opportunities
-
-- All Setup tasks marked [P] can run in parallel
-- All Foundational tasks marked [P] can run in parallel (within Phase 2)
-- Once Foundational phase completes, all user stories can start in parallel (if team capacity allows)
-- All tests for a user story marked [P] can run in parallel
-- Models within a story marked [P] can run in parallel
-- Different user stories can be worked on in parallel by different team members
+**Checkpoint**: US2 shippable behind master flag.
 
 ---
 
-## Parallel Example: User Story 1
+## Phase 6 — Mirror request UI + consent flow (US1 + US3)
 
-```bash
-# Launch all tests for User Story 1 together (if tests requested):
-Task: "Contract test for [endpoint] in tests/contract/test_[name].py"
-Task: "Integration test for [user journey] in tests/integration/test_[name].py"
+- [ ] T080 [US1] `apps/web/src/app/api/credentials/[id]/onchain/route.ts` — POST (request mirror) + GET (status); uses `kill-switch.evaluateMirrorGate`; writes queue + consent + audit
+- [ ] T081 [P] [US1] `apps/web/src/app/api/credentials/[id]/onchain/[attestation_uid]/route.ts` — DELETE (unmirror); idempotent
+- [ ] T082 [P] [US1] `apps/web/src/app/api/onchain/consent/route.ts` — POST (grant) + DELETE (revoke); handles SIWE verification + consent row insert + opt-in flag update
+- [ ] T083 [P] [US3] `apps/web/src/app/api/onchain/wallet/connect/route.ts` — POST; SIWE verify; returns verified address (does NOT yet persist to users.wallet_address — that happens on consent)
+- [ ] T084 [P] [US3] `apps/web/src/app/api/onchain/wallet/export/route.ts` — POST; 2FA-gated; returns the platform-custodial private key as a one-time downloadable file
+- [ ] T085 [P] [US3] `apps/web/src/app/api/onchain/policy/route.ts` — GET (read all 3 gates for the calling student) + PATCH (per-tenant flag, admin-only)
+- [ ] T086 [P] [US1] `apps/web/src/app/(student)/dashboard/credentials/mirror-button.tsx` — "Mirror on-chain" CTA; opens a modal with: consent text, wallet choice (self / platform-custodial), reputation bonus toggle (if `snapshotScore >= 90`), SIWE prompt (if self); POSTs to `/api/credentials/{id}/onchain`
+- [ ] T087 [P] [US1] `apps/web/src/app/(student)/dashboard/credentials/mirror-status.tsx` — status badge: `not_mirrored` | `pending` | `submitted` | `confirmed` | `failed` | `cancelled` | `dead_letter`; with "View on EAS Scan" + "View resolver" links when confirmed
+- [ ] T088 [P] [US3] `apps/web/src/app/(student)/settings/onchain-mirror/page.tsx` — opt-in toggle + active mirrors list + "Unmirror all" bulk action + key export button
+- [ ] T089 [P] [US3] `apps/web/src/app/(college)/admin/onchain-policy/page.tsx` — college admin: per-tenant flag toggle
+- [ ] T090 [P] [US3] `apps/web/src/components/wallet/connect-button.tsx` — wagmi/rainbowkit-based wallet connect; falls back to custodial prompt if no wallet detected
+- [ ] T091 [P] [US3] `apps/web/src/components/wallet/custodial-prompt.tsx` — "No wallet? Use an Antarix-custodial address" CTA
 
-# Launch all models for User Story 1 together:
-Task: "Create [Entity1] model in src/models/[entity1].py"
-Task: "Create [Entity2] model in src/models/[entity2].py"
-```
-
----
-
-## Implementation Strategy
-
-### MVP First (User Story 1 Only)
-
-1. Complete Phase 1: Setup
-2. Complete Phase 2: Foundational (CRITICAL - blocks all stories)
-3. Complete Phase 3: User Story 1
-4. **STOP and VALIDATE**: Test User Story 1 independently
-5. Deploy/demo if ready
-
-### Incremental Delivery
-
-1. Complete Setup + Foundational → Foundation ready
-2. Add User Story 1 → Test independently → Deploy/Demo (MVP!)
-3. Add User Story 2 → Test independently → Deploy/Demo
-4. Add User Story 3 → Test independently → Deploy/Demo
-5. Each story adds value without breaking previous stories
-
-### Parallel Team Strategy
-
-With multiple developers:
-
-1. Team completes Setup + Foundational together
-2. Once Foundational is done:
-   - Developer A: User Story 1
-   - Developer B: User Story 2
-   - Developer C: User Story 3
-3. Stories complete and integrate independently
+**Checkpoint**: Full UI flow for US1 + US3 shippable.
 
 ---
 
-## Notes
+## Phase 7 — Kill-switch + DPDP integration (US3)
 
-- [P] tasks = different files, no dependencies
-- [Story] label maps task to specific user story for traceability
-- Each user story should be independently completable and testable
-- Verify tests fail before implementing
-- Commit after each task or logical group
-- Stop at any checkpoint to validate story independently
-- Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
+- [ ] **T100** [US3] Hook the existing 002 deletion handler (`apps/web/src/app/api/users/me/delete/route.ts` or equivalent) to enqueue a bulk-unmirror on `users.deletion_requested_at` set. Verify: every active mirror for the deleted student is revoked within 1 hour (SC-CHM-008)
+- [ ] T101 [P] [US3] `apps/web/src/lib/onchain/dpdp-bulk-unmirror.ts` — `enqueueBulkUnmirrorForStudent(studentId) → queueIds[]`; walks `chain_mirror_queue` for `status='confirmed'` rows; inserts an unmirror row for each
+- [ ] T102 [P] [US3] `apps/web/src/lib/onchain/policy-audit.ts` — pure fn: `emitPolicyAudit(action, actor, subject, payload)`; called from every policy change
+- [ ] T103 [P] [US3] Slack notifier — when `chain_mirror_queue.status` transitions to `dead_letter` for any row, post to the Antarix ops Slack via the existing webhook from 041
+- [ ] T104 [P] [US3] Chaos test `tests/e2e/onchain-mirror-kill-switch.spec.ts` — flip master flag mid-flight; assert no new submissions; assert in-flight submissions complete; measure time-to-no-new-submissions < 5 min
+- [ ] T105 [P] [US3] E2E `tests/e2e/onchain-mirror-tenant-disable.spec.ts` — per-tenant flag off → 403; new mirror denied; old mirrors stand
+- [ ] T106 [P] [US3] E2E `tests/e2e/onchain-mirror-dpdp-deletion.spec.ts` — student deletion → bulk unmirror → all EAS attestations revoked; verify on local Hardhat
+- [ ] T107 [P] [US3] Unit test `tests/integration/policy-audit.test.ts` — every consent change writes an audit row with the correct `consent_version` + `action`
+
+**Checkpoint**: US3 kill-switch + DPDP flow shippable.
+
+---
+
+## Phase 8 — Schema registration + reputation bonus
+
+- [ ] T120 [US1] `scripts/register-eas-schema-base.ts` — one-time script; reads `EAS_SCHEMA_REGISTRY_ADDRESS_BASE` from env; calls `schemaRegistry.register({schema: 'bytes32 vcHash,string revocationPointer,uint64 scoreSnapshot', revocable: true})`; writes the resulting `schema_uid` to env + `chain_mirror_schema` table; idempotent
+- [ ] T121 [P] [US1] `hardhat/scripts/deploy-eas.ts` — deploys the EAS contracts to the local Hardhat node; prints addresses
+- [ ] T122 [P] [US1] `hardhat/scripts/register-schema.ts` — calls `register-eas-schema-base.ts` against the local Hardhat node; writes the schema_uid to `.env.local.test`
+- [ ] T123 [P] [US1] `hardhat/hardhat.config.ts` — configures the local network; imports EAS contracts from `@ethereum-attestation-service/contracts`
+- [ ] T124 [US1] Wire `reputation-bonus.ts` into `chain-mirror-attest` (T040) and `chain-mirror-dispatcher` (T041) — only fires when `snapshotScore >= 90` AND `include_reputation_bonus=true`
+- [ ] T125 [US1] E2E `tests/e2e/onchain-mirror-happy-path.spec.ts` — seed VC + opt-in + request mirror + wait for dispatcher + verify on local Hardhat + resolve publicly
+
+**Checkpoint**: Full mirror + unmirror + bonus + resolver pipeline tested end-to-end on local Hardhat.
+
+---
+
+## Phase 9 — Tests + observability + cross-cutting
+
+- [ ] T140 [P] Unit tests for `kill-switch.ts` — all 3 gate combinations; each returns the right reason
+- [ ] T141 [P] E2E `tests/e2e/onchain-mirror-unmirror.spec.ts` — happy path unmirror; idempotency check; audit row created
+- [ ] T142 [P] Add `009_onchain_mirror_enabled` to `feature_flags` seed (in `supabase/seed.sql`)
+- [ ] T143 [P] Add `CHAIN_MIRROR_CONSENT_VERSION` + `CHAIN_MIRROR_CONSENT_TEXT_PATH` to env.example
+- [ ] T144 [P] Add structured logging in all 4 edge functions to `supabase.functions.invoke_log` (per existing 004 pattern)
+- [ ] T145 [P] Add `daily_chain_mirror_metrics` SQL view exposing: mirror count, unmirror count, dead-letter count, median cost, p95 cost, median resolution latency
+- [ ] T146 [P] Add ops dashboard panel (read-only) at `/admin/observability/onchain-mirror` — shows the daily metrics + a "kill-switch state" widget
+- [ ] T147 [P] Update `AGENTS.md` to reference 009 plan
+- [ ] T148 [P] `docs/009-runbook.md` — key rotation ceremony, EAS contract pause response, gas spike response, DPDP deletion backlog response
+- [ ] T149 [P] DPDP / SOC2 audit log addendum: ensure `chain_mirror_audit` is in the auditor's read-only role
+- [ ] T150 [P] Update `README.md` with the 009 feature surface (1 paragraph: on-chain mirror + resolver + kill-switch)
+
+---
+
+## Parallel Opportunities
+
+- Phase 1 (T010) blocks Phase 2-9; T011 can be parallel with T010 (different file, no FK dependency).
+- Phase 2 (T020-T024) all parallel after Phase 1.
+- Phase 3 (T030-T036) all parallel after Phase 2.
+- Phase 4 (T040-T049) critical path: T040, T041, T044, T045. T042, T046-T049 are parallel.
+- Phase 5 (T060-T066) can start in parallel with Phase 4 (T040-T049). T060 is critical path; T062 depends on T030 (EAS client).
+- Phase 6 (T080-T091) depends on T036 (kill-switch) and T030 (EAS client); otherwise parallel.
+- Phase 7 (T100-T107) depends on T040 (attest) and T043 (unmirror) for E2E tests; T101-T103 can be parallel with Phase 6.
+- Phase 8 (T120-T125) depends on T030 (EAS client); T121-T123 are local Hardhat setup, fully parallel.
+- Phase 9 (T140-T150) is the consolidation phase; can start once Phase 5-7 are done.
+
+## Task Count Summary
+
+| Phase | Tasks | Critical Path |
+|---|---|---|
+| 0 — Pre-flight | 7 | T005, T006 |
+| 1 — Migrations | 2 | T010 |
+| 2 — Types + utils | 5 | T022 |
+| 3 — EAS SDK + lib | 7 | T030, T036 |
+| 4 — Edge functions + dispatcher (US1) | 10 | T040, T041 |
+| 5 — Verification UI + resolver (US2) | 7 | T060, T062 |
+| 6 — Mirror UI + consent flow (US1 + US3) | 12 | T080, T086 |
+| 7 — Kill-switch + DPDP (US3) | 8 | T100 |
+| 8 — Schema reg + reputation bonus | 6 | T120, T124 |
+| 9 — Tests + observability + cross-cutting | 11 | T142, T146 |
+| **Total** | **75** | |
+
+## Rollout Recommendation
+
+1. Land Phases 0-4 in the first sprint (US1 backend + lib + dispatchers) — all behind master flag, default OFF.
+2. Land Phases 5-6 in the second sprint (US2 resolver + US1/US3 UI) — flag still OFF.
+3. Land Phases 7-8 in the third sprint (US3 kill-switch + DPDP + reputation bonus + schema reg) — flag still OFF.
+4. Phase 9 in parallel with sprint 3 (observability + runbook + audit addendum).
+5. Cohort rollout: Day 0 internal dogfood (engineering only) → Day 30 cohort 1% of students (only those who actively toggle) → Day 60 cohort 10% → Day 90 cohort 100%.
+6. The `009_reputation_bonus` flag stays OFF until Day 60 (deliberately a slower ramp than the mirror itself).

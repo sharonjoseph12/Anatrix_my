@@ -25,11 +25,14 @@ describe("computeRecommendations", () => {
       id: "student-1",
       current_skills: ["python", "docker", "sql"],
     };
+    // pre shares 3/4 with student (Jaccard 3/4 = 0.75).
+    // post = pre + {kubernetes} so the only "new" skill in post is
+    // kubernetes; git was already in the student's stack.
     const alumni: AlumniProfile[] = Array.from({ length: 12 }, (_, i) =>
       makeAlumni(
         i,
-        ["python", "docker", "sql", "git"], // pre shares 3/4 with student → Jaccard 3/4 = 0.75
-        ["python", "docker", "sql", "git", "kubernetes"], // all add kubernetes
+        ["python", "docker", "sql", "git"],
+        ["python", "docker", "sql", "git", "kubernetes"],
         "Acme Corp",
       ),
     );
@@ -82,7 +85,6 @@ describe("computeRecommendations", () => {
       id: "student-1",
       current_skills: ["rust", "wasm", "svelte"],
     };
-    // Alumni have completely disjoint skill sets from the student.
     const alumni: AlumniProfile[] = Array.from({ length: 20 }, (_, i) =>
       makeAlumni(
         i,
@@ -99,7 +101,7 @@ describe("computeRecommendations", () => {
   it("caps confidence at 0.95 even when every kept alumni learned the skill", () => {
     const student: StudentProfile = {
       id: "student-1",
-      current_skills: ["python", "sql"],
+      current_skills: ["python", "sql", "git"],
     };
     const alumni: AlumniProfile[] = Array.from({ length: 10 }, (_, i) =>
       makeAlumni(
@@ -112,6 +114,7 @@ describe("computeRecommendations", () => {
 
     const recs = computeRecommendations(student, alumni);
     expect(recs).toHaveLength(1);
+    expect(recs[0]!.skill).toBe("kubernetes");
     expect(recs[0]!.confidence).toBeLessThanOrEqual(0.95);
     expect(recs[0]!.confidence).toBe(0.95);
   });
@@ -119,7 +122,7 @@ describe("computeRecommendations", () => {
   it("produces a reasoning string that includes count, total, company, and skill", () => {
     const student: StudentProfile = {
       id: "student-1",
-      current_skills: ["python", "docker", "sql"],
+      current_skills: ["python", "docker", "sql", "git"],
     };
     const alumni: AlumniProfile[] = [
       ...Array.from({ length: 5 }, (_, i) =>
@@ -143,23 +146,17 @@ describe("computeRecommendations", () => {
     const recs = computeRecommendations(student, alumni);
     expect(recs).toHaveLength(1);
     const r = recs[0]!;
-    // "10 of 10 alumni placed at <most_common_company> added <skill> after your current stack"
     expect(r.reasoning).toMatch(/^10 of 10 alumni placed at /);
     expect(r.reasoning).toContain("kubernetes");
     expect(r.reasoning).toContain(" after your current stack");
-    // Tie on the company (5 + 5) → mode is the lexically smallest company.
     expect(r.reasoning).toContain("Acme");
   });
 
   it("breaks ties stably: with two skills at the same count, the lexically smaller one ranks first", () => {
     const student: StudentProfile = {
       id: "student-1",
-      current_skills: ["python", "docker", "sql"],
+      current_skills: ["python", "docker", "sql", "git"],
     };
-    // 6 alumni, half learned "rust" and half learned "go" (3 each).
-    // They all placed at the same company so the company mode is
-    // identical; rank is then decided by skill lex order → "go" < "rust"
-    // and the rec with "go" should come first.
     const alumni: AlumniProfile[] = [
       ...Array.from({ length: 3 }, (_, i) =>
         makeAlumni(
@@ -179,9 +176,8 @@ describe("computeRecommendations", () => {
       ),
     ];
 
-    const recs = computeRecommendations(student, alumni);
+    const recs = computeRecommendations(student, alumni, { minSourceCount: 1 });
     expect(recs).toHaveLength(2);
-    // Same count for both → tie broken by skill lex order: "go" < "rust".
     expect(recs[0]!.skill).toBe("go");
     expect(recs[1]!.skill).toBe("rust");
     expect(recs[0]!.source_count).toBe(3);
@@ -191,43 +187,13 @@ describe("computeRecommendations", () => {
   it("respects the topK limit and returns only the requested number of recs", () => {
     const student: StudentProfile = {
       id: "student-1",
-      current_skills: ["python", "docker", "sql"],
+      current_skills: ["python", "docker", "sql", "git"],
     };
-    // 30 alumni; each added a different skill. All 30 skills are tied
-    // on count, so the rank is decided lexically. With topK=2 we get
-    // the first two in lex order. minSourceCount is lowered to 1 so
-    // the per-skill count of 1 clears the D10 noise floor — the test
-    // is exercising the topK gate, not the noise floor.
     const skills = [
-      "aws",
-      "azure",
-      "bash",
-      "c",
-      "elixir",
-      "erlang",
-      "fsharp",
-      "go",
-      "haskell",
-      "hadoop",
-      "helm",
-      "istio",
-      "java",
-      "javascript",
-      "jenkins",
-      "kafka",
-      "kotlin",
-      "kubernetes",
-      "linux",
-      "mongodb",
-      "nginx",
-      "node",
-      "openapi",
-      "postgres",
-      "pytorch",
-      "redis",
-      "ruby",
-      "rust",
-      "spark",
+      "aws", "azure", "bash", "c", "elixir", "erlang", "fsharp", "go",
+      "haskell", "hadoop", "helm", "istio", "java", "javascript", "jenkins",
+      "kafka", "kotlin", "kubernetes", "linux", "mongodb", "nginx", "node",
+      "openapi", "postgres", "pytorch", "redis", "ruby", "rust", "spark",
       "terraform",
     ];
     const alumni: AlumniProfile[] = skills.map((s, i) =>
@@ -241,7 +207,6 @@ describe("computeRecommendations", () => {
 
     const recs = computeRecommendations(student, alumni, { topK: 2, minSourceCount: 1 });
     expect(recs).toHaveLength(2);
-    // First two in lex order among the skill list: "aws" then "azure".
     expect(recs[0]!.skill).toBe("aws");
     expect(recs[1]!.skill).toBe("azure");
     expect(recs[0]!.rank).toBe(1);
