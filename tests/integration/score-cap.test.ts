@@ -48,10 +48,17 @@ describe("clampCombinedScore", () => {
     expect(result.total).toBe(5);
   });
 
-  it("clampCombinedScore(5, 3) → { ide: 3.13, biometric: 1.88, total: 5 } (proportional scaling)", () => {
+  it("clampCombinedScore(5, 3) → individual caps bind first: ide=3, bio=2, sum=5", () => {
     const result = clampCombinedScore(5, 3);
-    expect(result.ide).toBeCloseTo(3.13, 2);
-    expect(result.biometric).toBeCloseTo(1.88, 2);
+    expect(result.ide).toBe(3);
+    expect(result.biometric).toBe(2);
     expect(result.total).toBe(5);
+  });
+
+  it("clampCombinedScore(2, 1) → { ide: 2, biometric: 1, total: 3 } (within all caps)", () => {
+    const result = clampCombinedScore(2, 1);
+    expect(result.ide).toBe(2);
+    expect(result.biometric).toBe(1);
+    expect(result.total).toBe(3);
   });
 });

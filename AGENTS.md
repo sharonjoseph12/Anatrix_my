@@ -1,9 +1,9 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-<<<<<<< HEAD
+at specs/004-eleven-of-ten/plan.md
 
-## Active features in development (5 features + roadmap)
+## Active features in development (7 features + roadmap)
 
 - `004-eleven-of-ten` (P1 trust + reach + recruiter; 125 tasks; migration 034-038)
   — Anti-cheat, ATS sync, i18n, SSO, faculty grading, hackathons, mock interviews,
@@ -35,30 +35,24 @@ shell commands, and other important information, read the current plan
   DPDP-safe revocation pointer, regulatory-safeguard audit trail.
   See: specs/009-onchain-mirror/{plan,research,data-model,contracts/api,quickstart,tasks,checklists/requirements}.md
 
+- `010-ai-talent-twin` (P1 recruiter + trust; 57 tasks; migration 053)
+  — RAG-based AI talent clone for 24/7 recruiter Q&A over student's actual work (GitHub,
+  DSA, collab, mock-interviews, IDE telemetry); code authorship proof badge via
+  stylometric fingerprint + sandbox session. No fine-tuning. Opt-in only.
+  See: specs/010-ai-talent-twin/{plan,research,data-model,contracts/api,quickstart,tasks,checklists/requirements}.md
+
 ## Cross-feature coordination
 - Roadmap + sprint plan + dependency graph + feature-flag matrix + risk register:
   specs/_roadmap/cross-feature-rollout.md
-- Migration number ledger: 034-038 (004), 043-050 (006-009), 051-052 (005)
+- Migration number ledger: 034-038 (004), 043-050 (006-009), 051-052 (005), 053 (010)
 
 ## Score contribution budget (all new signals combined)
 - 006: 3% IDE + 2% biometrics (5% combined)
 - 007: 0 (engagement only, not a signal)
 - 008: 5% teamwork
 - 009: 0 (mirror, not a signal)
+- 010: 0 (insight surface, not a signal)
 - 004: 10% faculty + 5% mock-interview
 - **Total upside additions: 25%** (capped server-side)
 - **Anti-cheat (004)**: -100% uncapped (defensive)
-=======
-at specs/004-eleven-of-ten/plan.md
-
-Active feature in development: `004-eleven-of-ten` (Anti-cheat, ATS sync,
-i18n, SSO, faculty grading, hackathons, mock interviews, public API, PWA,
-outcome pricing, next-best-skill). See:
-- specs/004-eleven-of-ten/plan.md
-- specs/004-eleven-of-ten/research.md
-- specs/004-eleven-of-ten/data-model.md
-- specs/004-eleven-of-ten/contracts/api.md
-- specs/004-eleven-of-ten/quickstart.md
-- specs/004-eleven-of-ten/tasks.md
->>>>>>> 002-antarix-definitive-vision
 <!-- SPECKIT END -->

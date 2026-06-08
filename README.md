@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 # Antarix — Verified Skill Proof Ecosystem → 12/10
-=======
-# Antarix — Verified Skill Proof Ecosystem
->>>>>>> 002-antarix-definitive-vision
 
 > Track. Prove. Hire. The verified skill proof ecosystem connecting students, colleges, and companies.
 
@@ -14,8 +10,7 @@ Antarix is a multi-portal SaaS platform that creates a verified skill proof pipe
 - **Colleges** manage placement readiness and match students with companies
 - **Companies** search verified candidate profiles and hire based on data, not resumes
 
-<<<<<<< HEAD
-## 12/10 Vision (6 active features)
+## 12/10 Vision (7 active features)
 
 | # | Feature | Priority | Status | Migration |
 |---|---|---|---|---|
@@ -25,26 +20,20 @@ Antarix is a multi-portal SaaS platform that creates a verified skill proof pipe
 | 007 | [Adaptive Learning Graph](specs/007-adaptive-learning-graph/) — Alumni mentorship via pgvector trajectory embeddings, daily LLM-generated micro-curriculum, curriculum-mentor closed loop | P1 | Spec ratified | 045-046 |
 | 008 | [Collaborative Mode](specs/008-collaborative-mode/) — Live multiplayer coding (Y.js + Liveblocks + LiveKit + WebContainer), teamwork scoring, anti-collusion, recruiter observe | P2 | Spec ratified | 047-048 |
 | 009 | [On-Chain Mirror](specs/009-onchain-mirror/) — EAS-on-Base-L2 hash-only mirror of W3C VCs, behind kill-switch flag default OFF, DPDP-safe revocation | P3 | Spec ratified | 049-050 |
+| 010 | [AI Talent Twin](specs/010-ai-talent-twin/) — RAG-based recruiter Q&A over student's actual work, stylometric authorship proof badge, opt-in only | P1 | Spec ratified | 053 |
 
 See [`specs/_roadmap/cross-feature-rollout.md`](specs/_roadmap/cross-feature-rollout.md) for the sprint plan, dependency graph, and risk register.
 
-=======
->>>>>>> 002-antarix-definitive-vision
 ## Tech Stack
 
 - **Monorepo**: Turborepo + pnpm workspaces
 - **Frontend**: Next.js 15 (App Router) + TypeScript + Tailwind CSS v4 + shadcn/ui
-<<<<<<< HEAD
 - **Mobile**: React Native + Expo SDK 51 (w/ Expo Router + EAS Build)
 - **Backend**: Supabase (Auth + PostgreSQL + pgvector + Edge Functions + Realtime)
 - **Extension**: Chrome MV3 + Vite
 - **Collaboration**: Y.js CRDT + Liveblocks + LiveKit (WebRTC)
 - **Automation**: Playwright (headless form-filler, test suite)
 - **On-Chain**: EAS (Ethereum Attestation Service) on Base L2
-=======
-- **Backend**: Supabase (Auth + PostgreSQL + Edge Functions + Realtime)
-- **Extension**: Chrome MV3 + Vite
->>>>>>> 002-antarix-definitive-vision
 - **Testing**: Vitest (unit) + Playwright (e2e)
 
 ## Quick Start
@@ -70,7 +59,6 @@ See [specs/001-antarix-complete-workflow/quickstart.md](specs/001-antarix-comple
 ```
 antarix/
 ├── apps/
-<<<<<<< HEAD
 │   ├── web/               # Next.js 15 — 3 portals via subdomain routing
 │   ├── extension/          # Chrome MV3 extension
 │   ├── mobile/             # React Native + Expo (005)
@@ -81,9 +69,9 @@ antarix/
 │   ├── types/              # Shared TypeScript types
 │   └── utils/              # Shared utilities
 ├── supabase/
-│   ├── migrations/         # 001-052 sequential additive migrations
+│   ├── migrations/         # 001-053 sequential additive migrations
 │   └── functions/          # Edge functions per feature
-├── specs/                  # Feature specifications (001-009 + roadmap)
+├── specs/                  # Feature specifications (001-010 + roadmap)
 │   ├── 001-antarix-complete-workflow/
 │   ├── 002-antarix-definitive-vision/
 │   ├── 003-engage-and-showcase/
@@ -93,6 +81,7 @@ antarix/
 │   ├── 007-adaptive-learning-graph/
 │   ├── 008-collaborative-mode/
 │   ├── 009-onchain-mirror/
+│   ├── 010-ai-talent-twin/
 │   └── _roadmap/           # Cross-feature rollout Gantt + dependency graph
 └── tests/
     ├── unit/
@@ -131,29 +120,12 @@ Observability (Append-Only Audit) · Feature-Flagged Rollout · Migration Number
 ## Documentation
 
 - [Cross-Feature Roadmap](specs/_roadmap/cross-feature-rollout.md) — sprint plan, dependency graph, feature-flag matrix, risk register
-- [Feature Specs (001-009)](specs/) — 9 additive feature specifications
+- [Feature Specs (001-010)](specs/) — 10 additive feature specifications
 - [API Contracts](specs/004-eleven-of-ten/contracts/api.md) — public + internal API surfaces
 - [Data Model](specs/004-eleven-of-ten/data-model.md) — full schema: 70+ tables
 - [Quickstart Guide](specs/001-antarix-complete-workflow/quickstart.md) — local dev setup
 - [Agent Working Context](AGENTS.md) — for opencode agents
 - [006 Rollout Runbook](docs/006-rollout-runbook.md) — deployment runbook for 006
-=======
-│   ├── web/         # Next.js 15 — 3 portals via subdomain routing
-│   └── extension/   # Chrome MV3 extension
-├── packages/
-│   ├── types/       # Shared TypeScript types
-│   └── utils/       # Shared utilities
-└── supabase/        # Database migrations + edge functions
-```
-
-## Documentation
-
-- [Feature Spec](specs/001-antarix-complete-workflow/spec.md)
-- [Implementation Plan](specs/001-antarix-complete-workflow/plan.md)
-- [Data Model](specs/001-antarix-complete-workflow/data-model.md)
-- [API Contracts](specs/001-antarix-complete-workflow/contracts/api.md)
-- [Quickstart Guide](specs/001-antarix-complete-workflow/quickstart.md)
->>>>>>> 002-antarix-definitive-vision
 
 ## License
 

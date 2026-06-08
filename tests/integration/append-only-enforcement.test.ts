@@ -14,11 +14,11 @@ describe("signal_audit append-only enforcement", () => {
     expect(sql).toContain("revoke update, delete on public.signal_audit from authenticated, anon, service_role");
   });
 
-  it("REVOKE explicitly lists all three roles", () => {
+  it("REVOKE explicitly lists all three roles on the actual SQL line (not comment)", () => {
     const sql = readFileSync(MIGRATION_PATH, "utf8");
     const revokeLine = sql
       .split("\n")
-      .find((l) => l.toLowerCase().includes("revoke") && l.includes("signal_audit"));
+      .find((l) => l.trim().toLowerCase().startsWith("revoke") && l.includes("signal_audit"));
     expect(revokeLine).toBeTruthy();
     expect(revokeLine!.toLowerCase()).toContain("authenticated");
     expect(revokeLine!.toLowerCase()).toContain("anon");
@@ -29,7 +29,7 @@ describe("signal_audit append-only enforcement", () => {
     const sql = readFileSync(MIGRATION_PATH, "utf8");
     const revokeLine = sql
       .split("\n")
-      .find((l) => l.toLowerCase().includes("revoke") && l.includes("signal_audit"));
+      .find((l) => l.trim().toLowerCase().startsWith("revoke") && l.includes("signal_audit"));
     expect(revokeLine).toBeTruthy();
     expect(revokeLine!.toLowerCase()).not.toContain("insert");
   });

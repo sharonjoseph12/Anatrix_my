@@ -1,439 +1,291 @@
-# API Contracts: 010 — AI Talent Twin
+# 010 — AI Talent Twin — API Contracts
 
-**Date**: 2026-06-08
-**Status**: Phase 1 design ratified
-
-All endpoints are **internal** (Next.js API routes, Supabase-auth-gated, RLS-enforced) unless marked **public**. The authorship proof verification endpoint is public (no auth required).
+## Endpoints
 
 ---
 
-## 1. Internal: Recruiter Talent Twin
+### POST /api/v1/recruiters/talent-twin/ask
 
-### `POST /api/v1/recruiters/talent-twin/ask`
+Ask a natural-language question about one or more candidates.
 
-**Auth**: recruiter session (must have `role = 'recruiter'`).
+**Auth:** Recruiter JWT (company Pro+ plan required)
 
-**Body**:
+**Request body:**
+
 ```json
 {
-  "student_id": "uuid",
-  "question": "What projects has this student worked on?",
-  "session_id": "uuid (optional — null creates new session)"
+  "user_ids": ["uuid", "uuid", ...],
+  "question": "What distributed-systems work has this candidate done?",
+  "max_candidates": 10
 }
 ```
 
-**Response 201** (student has opted in):
-```json
-{
-  "session_id": "uuid",
-  "answer_id": "uuid",
-  "status": "pending",
-  "message": "Your question has been submitted. The student will review it before the answer is visible."
-}
-```
+- `user_ids` (required, array[uuid], max 50): The candidates to scope the question to. All must have `talent_twin_opt_in = true`.
+- `question` (required, string, max 500 chars): The natural-language question.
+- `max_candidates` (optional, int, default 10): If `user_ids` is not provided, the system scopes to the recruiter's last search results and picks the top N by skill-proof score.
 
-**Response 201** (student has auto-approve enabled or answer was pre-approved):
+**Response 200:**
+
 ```json
 {
-  "session_id": "uuid",
-  "answer_id": "uuid",
-  "status": "approved",
-  "answer": "Based on their Antarix work, I can see... [Source: GitHub PR — Refactor auth middleware](https://...)",
+  "answer": "This candidate has significant distributed-systems experience. In commit a3f2c1 [1] they added a Redis cache to the Qdrant query path using a Bloom filter to skip non-existent keys. In commit d4e5f6 [2] they refactored the shard-rebalancing algorithm to use a consistent-hash ring. Both commits are in the antarix/qdrant repository.",
   "citations": [
-    { "source_type": "github_pr", "title": "Refactor auth middleware", "url": "https://..." },
-    { "source_type": "mock_interview", "title": "System Design Interview", "url": "https://..." }
-  ]
-}
-```
-
-**Errors**:
-- `400` (`invalid_input`): question too long (> 1000 chars), student_id missing
-- `403` (`student_not_opted_in`): student has not enabled talent twin
-- `403` (`recruiter_not_authorized`): recruiter's partner company is not approved
-- `404` (`student_not_found`)
-- `429` (`token_cap_reached`): recruiter exceeded `TALENT_TWIN_WEEKLY_TOKEN_CAP`
-- `503` (`rag_unavailable`): embedding service or LLM provider is down
-
-**Side effects**:
-- INSERT or UPDATE `recruiter_chat_session` (increment `question_count`)
-- INSERT `answer_preview` row with status `'pending'`
-- INSERT `talent_twin_qa_log` row with `question_hash`, `status='pending'`
-- If student has auto-approve setting enabled (or `TALENT_TWIN_AUTO_APPROVE_HOURS` = 0), the answer is approved immediately and the recruiter receives the answer in the response
-
----
-
-### `GET /api/v1/recruiters/talent-twin/sessions/{id}`
-
-**Auth**: recruiter session (must own the session).
-
-**Response 200**:
-```json
-{
-  "session_id": "uuid",
-  "student_id": "uuid",
-  "student_name": "Priya Sharma",
-  "started_at": "2026-06-08T10:00:00Z",
-  "last_activity_at": "2026-06-08T10:15:00Z",
-  "question_count": 3,
-  "questions": [
-    {
-      "answer_id": "uuid",
-      "question": "What projects has this student worked on?",
-      "status": "approved",
-      "answer": "...",
-      "citations": [...],
-      "answered_at": "2026-06-08T10:01:00Z"
-    },
-    {
-      "answer_id": "uuid",
-      "question": "Describe their debugging approach",
-      "status": "pending",
-      "answer": null,
-      "citations": null,
-      "answered_at": null
-    }
-  ]
-}
-```
-
-**Errors**: `404` (`session_not_found`), `403` (`forbidden`).
-
----
-
-## 2. Internal: Student Talent Twin
-
-### `GET /api/v1/students/talent-twin/pending`
-
-**Auth**: student session.
-
-**Response 200**:
-```json
-{
-  "pending_count": 2,
-  "pending_answers": [
-    {
-      "id": "uuid",
-      "recruiter_name": "Rahul from TechCorp",
-      "question": "What projects has this student worked on?",
-      "generated_answer": "Based on their Antarix work...",
-      "citations": [...],
-      "created_at": "2026-06-08T10:00:00Z",
-      "auto_approve_at": "2026-06-09T10:00:00Z"
-    }
-  ]
-}
-```
-
-**Errors**: `401` (no session).
-
----
-
-### `POST /api/v1/students/talent-twin/answers/{id}/approve`
-
-**Auth**: student session (must be the subject of the answer).
-
-**Body**: (empty)
-
-**Response 200**:
-```json
-{
-  "id": "uuid",
-  "status": "approved",
-  "approved_at": "2026-06-08T10:30:00Z"
-}
-```
-
-**Side effects**:
-- UPDATE `answer_preview.status = 'approved'`, set `approved_at`
-- COPY citation_links to `talent_twin_qa_log` for the matching row
-- DELETE the `answer_preview` row (cleanup after copy)
-- The recruiter's next session poll will show the answer
-
-**Errors**: `404` (`answer_not_found`), `403` (`forbidden`), `409` (`already_processed`).
-
----
-
-### `POST /api/v1/students/talent-twin/answers/{id}/reject`
-
-**Auth**: student session (must be the subject of the answer).
-
-**Body** (optional):
-```json
-{
-  "edited_answer": "I actually led the auth refactor, not just participated. The key challenge was..."
-}
-```
-
-**Response 200**:
-```json
-{
-  "id": "uuid",
-  "status": "rejected",
-  "edited_version_provided": true,
-  "rejected_at": "2026-06-08T10:35:00Z"
-}
-```
-
-**Side effects**:
-- UPDATE `answer_preview.status = 'rejected'`, set `rejected_at`
-- If `edited_answer` provided: set `answer_preview.edited_answer`, copy edited version to recruiter view
-- DELETE the `answer_preview` row (cleanup after action)
-- The recruiter sees either the edited answer or "Question declined by student"
-
-**Errors**: same as approve.
-
----
-
-### `POST /api/v1/students/talent-twin/opt-in`
-
-**Auth**: student session.
-
-**Body**:
-```json
-{
-  "enabled": true
-}
-```
-
-**Response 200**:
-```json
-{
-  "status": "opted_in",
-  "updated_at": "2026-06-08T09:00:00Z",
-  "message": "Recruiters can now ask questions about your work. You can preview every answer before it's visible."
-}
-```
-
-**Body** (revoke):
-```json
-{
-  "enabled": false
-}
-```
-
-**Response 200**:
-```json
-{
-  "status": "opted_out",
-  "updated_at": "2026-06-08T09:05:00Z",
-  "message": "Talent Twin access revoked. All Q&A logs have been anonymized within 60 seconds.",
-  "purge_eta_seconds": 60
-}
-```
-
-**Errors**: `400` (invalid `enabled` value).
-
-**Side effects (enable)**:
-- UPDATE `users.talent_twin_opted_in = true`
-- Queue embedding job for this student (async)
-
-**Side effects (disable)**:
-- UPDATE `users.talent_twin_opted_in = false`
-- UPDATE `talent_twin_qa_log.status = 'revoked'` for all rows with `student_id = me`
-- DELETE all `answer_preview` rows for `student_id = me`
-- DELETE all `recruiter_chat_session` rows for `student_id = me`
-- Trigger deletion of all embedding chunks for `student_id = me`
-- INSERT `signal_audit` row with `action = 'talent_twin_revoked'`
-
----
-
-## 3. Internal: Authorship Proof
-
-### `POST /api/v1/students/authorship-proof/request`
-
-**Auth**: student session.
-
-**Body**:
-```json
-{
-  "project_id": "uuid",
-  "language": "typescript"
-}
-```
-
-**Response 201**:
-```json
-{
-  "proof_id": "uuid",
-  "status": "requested",
-  "sandbox_session_url": "/projects/<project-id>/authorship-proof/<proof-id>",
-  "message": "Open the sandboxed editor and write code for 5-15 minutes to generate your authorship proof."
-}
-```
-
-**Errors**:
-- `400` (`insufficient_baseline`): < 30 days or < 1000 keystroke events in 006 IDE telemetry
-- `400` (`duplicate_request`): active proof already exists for this project
-- `400` (`project_not_found`)
-- `403` (`feature_disabled`): `010_authorship_proof` flag is OFF
-
-**Side effects**:
-- INSERT `authorship_proof` row with `status='requested'`
-- Create sandbox session URL (reuses 008's code sandbox)
-
----
-
-### `POST /api/v1/students/authorship-proof/{id}/complete-session`
-
-**Auth**: student session.
-
-**Body**:
-```json
-{
-  "keystroke_timing_vector": {
-    "bins": ["50-100","100-150","150-200","200-250","250-300","300-350","350-400","400-450","450-500"],
-    "counts": [42, 78, 55, 32, 18, 9, 4, 2, 1, 0]
-  },
-  "ast_diff_sequence": [
-    { "nodes_added": 12, "nodes_removed": 3, "max_depth_delta": 1 },
-    { "nodes_added": 8, "nodes_removed": 5, "max_depth_delta": 2 }
+    {"number": 1, "source_url": "https://github.com/antarix/qdrant/commit/a3f2c1", "title": "Add Redis cache to Qdrant query path", "date": "2026-03-12T14:30:00Z", "chunk_type": "commit"},
+    {"number": 2, "source_url": "https://github.com/antarix/qdrant/commit/d4e5f6", "title": "Refactor shard-rebalancing to consistent-hash ring", "date": "2026-03-10T09:15:00Z", "chunk_type": "commit"}
   ],
-  "error_recovery_vector": {
-    "count": 2,
-    "latencies_ms": [3200, 5400],
-    "mean_latency_ms": 4300,
-    "median_latency_ms": 4300
+  "candidate_count": 1,
+  "chunks_retrieved": 12,
+  "latency_ms": 3420
+}
+```
+
+**Response 400:** (invalid request)
+
+```json
+{
+  "error": "invalid_request",
+  "message": "question must be between 1 and 500 characters"
+}
+```
+
+**Response 403:** (recruiter not on Pro+ plan, or quota exhausted)
+
+```json
+{
+  "error": "forbidden",
+  "message": "AI Talent Twin requires a Pro or Enterprise plan. You are on the Starter plan."
+}
+```
+
+**Response 404:** (all candidates opted out or not found)
+
+```json
+{
+  "error": "no_eligible_candidates",
+  "message": "None of the specified candidates have opted in to the AI Talent Twin."
+}
+```
+
+**Response 429:** (rate limited — see rate-limit doc)
+
+```json
+{
+  "error": "rate_limited",
+  "retry_after": 30
+}
+```
+
+**Rate limit:** 30 questions / minute / recruiter (configurable; controlled by the `withRateLimit` wrapper from `_shared/rate-limit.ts`).
+
+**Audit:** Every successful call creates a `talent_twin_qa_log` row.
+
+---
+
+### POST /api/v1/students/talent-twin/opt-in
+
+Toggle the AI Talent Twin opt-in status.
+
+**Auth:** Student JWT
+
+**Request body:**
+
+```json
+{
+  "opt_in": true
+}
+```
+
+- `opt_in` (required, boolean)
+
+**Response 200:**
+
+```json
+{
+  "opt_in": true,
+  "chunks_count": 142,
+  "message": "AI Talent Twin is now enabled. Your work is visible to recruiters on Pro+ plans."
+}
+```
+
+**Response 200 (opt-out):**
+
+```json
+{
+  "opt_in": false,
+  "chunks_deleted": 142,
+  "message": "AI Talent Twin is now disabled. Your chunks have been deleted. Re-enabling will take 24 hours to rebuild."
+}
+```
+
+**Note on re-enable:** When a student opts back in, the chunks must be rebuilt by the daily embedder cron. They see the status `"rebuilding"` in `/preview` until the next cron cycle.
+
+---
+
+### GET /api/v1/students/talent-twin/preview
+
+Return a summary of what's in the student's twin — the data the RAG pipeline can access.
+
+**Auth:** Student JWT
+
+**Query parameters:** None.
+
+**Response 200:**
+
+```json
+{
+  "opt_in": true,
+  "opt_in_since": "2026-04-01T00:00:00Z",
+  "total_chunks": 142,
+  "by_type": {
+    "code": 87,
+    "commit": 32,
+    "ide_session": 18,
+    "collaboration": 5
   },
-  "duration_seconds": 480,
-  "keystroke_count": 221,
-  "language": "typescript"
+  "top_repos": [
+    {"repo": "antarix/qdrant", "chunks": 45, "commits": 12, "lines_added": 1247},
+    {"repo": "antarix/frontend", "chunks": 32, "commits": 8, "lines_added": 893},
+    {"repo": "personal/leetcode", "chunks": 10, "commits": 2, "lines_added": 315}
+  ],
+  "claimable_commits": 18,
+  "badges_issued": 3,
+  "query_count_last_30d": 7,
+  "status": "ready"
 }
 ```
 
-**Response 200**:
-```json
-{
-  "proof_id": "uuid",
-  "status": "completed",
-  "confidence_score": 87,
-  "baseline_similarity": 0.88,
-  "verifiable_credential_url": "https://credentials.antarix.com/vc/proof-uuid",
-  "message": "Your code authorship has been verified with 87% confidence. The badge is now visible to employers."
-}
-```
-
-**Response 200** (insufficient similarity):
-```json
-{
-  "proof_id": "uuid",
-  "status": "failed",
-  "confidence_score": 42,
-  "baseline_similarity": 0.55,
-  "message": "Confidence too low (42/100). Try writing for longer or in a familiar environment.",
-  "retries_remaining": 2
-}
-```
-
-**Errors**:
-- `400` (`insufficient_keystrokes`): `keystroke_count < AUTHORSHIP_MIN_KEYSTROKE_EVENTS`
-- `400` (`session_too_short`): `duration_seconds < AUTHORSHIP_MIN_SESSION_SECONDS`
-- `404` (`proof_not_found`), `403` (`forbidden`), `409` (`already_completed`)
-
-**Side effects**:
-- INSERT `authorship_sandbox_sessions` row
-- Compute baseline similarity against 006 IDE telemetry
-- If similarity ≥ `AUTHORSHIP_SIMILARITY_THRESHOLD` (0.7): mint W3C VC via 004 credential-issue flow, update `authorship_proof` with `status='completed'`, `confidence_score`, `verifiable_credential_url`
-- If similarity < threshold: update `authorship_proof` with `status='failed'`, increment retry count
+- `status`: `"ready"` (chunks available), `"rebuilding"` (opted in but chunks not yet generated), `"disabled"` (opted out).
 
 ---
 
-### `GET /api/v1/students/authorship-proof/{id}/badge`
+### POST /api/v1/students/talent-twin/badge/issue
 
-**Auth**: student session (or employer with view access to the project).
+Issue an authorship proof badge for selected commits.
 
-**Response 200**:
+**Auth:** Student JWT
+
+**Request body:**
+
 ```json
 {
-  "proof_id": "uuid",
-  "status": "completed",
-  "confidence_score": 87,
-  "project_id": "uuid",
-  "language": "typescript",
-  "session_date": "2026-06-08T10:45:00Z",
-  "session_duration_seconds": 480,
-  "verifiable_credential_url": "https://credentials.antarix.com/vc/proof-uuid",
-  "credential_status": "valid"
+  "commits": ["sha1", "sha2", "sha3"],
+  "label": "Qdrant contributions 2026"
 }
 ```
 
-**Errors**: `404` (`proof_not_found`), `403` (`forbidden`).
+- `commits` (required, array[string], max 50): The commit SHAs to include.
+- `label` (optional, string, max 100 chars): A human-readable label for the badge. Defaults to "Top commits — <current year>".
+
+**Response 200:**
+
+```json
+{
+  "badge_id": "uuid",
+  "nonce": "uuid",
+  "svg_url": "https://antarix.app/badges/authorship/<uuid>.svg",
+  "jwt": "eyJhbGciOiJIUzI1NiIs...",
+  "expires_at": "2026-06-07T00:00:00Z",
+  "commits_included": 3,
+  "total_lines_authored": 1247
+}
+```
+
+**Response 400:** (invalid commits, or some commits not claimable)
+
+```json
+{
+  "error": "commits_not_eligible",
+  "message": "2 of 3 commits have authorship_score < 0.8. Claimable: a3f2c1. Not claimable: d4e5f6 (score: 0.45), e6f7a8 (score: 0.32)."
+}
+```
+
+**Rate limit:** 5 badges / day / student. (Prevents abuse.)
 
 ---
 
-## 4. Public: Authorship Proof Verification
+### GET /api/v1/badges/verify
 
-### `GET /api/v1/public/authorship-proof/{id}/verify`
+Verify an authorship badge (public, no auth).
 
-**Auth**: none (public).
+**Query parameters:**
 
-**Response 200**:
+- `badge_id` (optional, uuid): The badge ID to verify.
+- `jwt` (optional, string): The full JWT to verify.
+
+One of `badge_id` or `jwt` must be provided.
+
+**Response 200 (valid):**
+
 ```json
 {
-  "proof_id": "uuid",
-  "credential_status": "valid",
-  "confidence_score": 87,
-  "issued_at": "2026-06-08T10:50:00Z",
-  "student_name": "Priya Sharma",
-  "college": "NIT Trichy",
-  "project_title": "Real-time Chat Application",
-  "language": "typescript",
-  "verifiable_credential": {
-    "@context": ["https://www.w3.org/2018/credentials/v1"],
-    "type": ["VerifiableCredential", "VerifiedOriginalWork"],
-    "issuer": "did:antarix:issuer",
-    "issuanceDate": "2026-06-08T10:50:00Z",
-    "credentialSubject": {
-      "id": "did:antarix:student-uuid",
-      "claim": "VerifiedOriginalWork",
-      "confidence_score": 87,
-      "project": "Real-time Chat Application"
-    }
-  }
+  "verified": true,
+  "subject": {"name": "Riya Sharma", "id": "uuid"},
+  "badge_id": "uuid",
+  "issued_at": "2026-04-01T00:00:00Z",
+  "expires_at": "2026-06-07T00:00:00Z",
+  "commits": [
+    {"sha": "a3f2c1", "repo": "antarix/qdrant", "lines": 47, "date": "2026-03-12T14:30:00Z"}
+  ],
+  "revoked": false
 }
 ```
 
-**Response 200** (revoked):
+**Response 200 (revoked):**
+
 ```json
 {
-  "proof_id": "uuid",
-  "credential_status": "revoked",
-  "revoked_at": "2026-06-09T09:00:00Z"
+  "verified": false,
+  "reason": "revoked",
+  "revoked_at": "2026-04-15T10:30:00Z",
+  "badge_id": "uuid"
 }
 ```
 
-**Errors**: `404` (proof not found or not completed).
+**Response 404:**
+
+```json
+{
+  "verified": false,
+  "reason": "not_found"
+}
+```
 
 ---
 
-## 5. Error response shape (all endpoints)
+### POST /api/v1/students/talent-twin/badge/revoke
+
+Revoke an authorship badge.
+
+**Auth:** Student JWT
+
+**Request body:**
 
 ```json
 {
-  "error": {
-    "code": "student_not_opted_in" | "insufficient_baseline" | "recruiter_not_authorized"
-          | "token_cap_reached" | "rag_unavailable" | "invalid_input" | "not_found"
-          | "forbidden" | "conflict" | "already_processed" | "duplicate_request"
-          | "insufficient_keystrokes" | "session_too_short" | "already_completed"
-          | "feature_disabled" | "internal_error",
-    "message": "<human-readable>",
-    "details": { ... }
-  }
+  "badge_id": "uuid",
+  "reason": "Included a commit I didn't author"
 }
 ```
 
-## 6. Rate limits
+**Response 200:**
 
-- `POST /api/v1/recruiters/talent-twin/ask`: 30 req/min per recruiter (prevents abusive Q&A volume)
-- `GET /api/v1/students/talent-twin/pending`: 60 req/min per student
-- `POST /api/v1/students/talent-twin/answers/{id}/approve`: 30 req/min per student
-- `POST /api/v1/students/talent-twin/answers/{id}/reject`: 30 req/min per student
-- `POST /api/v1/students/talent-twin/opt-in`: 5 req/min per student (prevents rapid toggling)
-- `POST /api/v1/students/authorship-proof/request`: 3 req/day per student (prevents abuse)
-- `POST /api/v1/students/authorship-proof/{id}/complete-session`: 10 req/min per student
-- `GET /api/v1/public/authorship-proof/{id}/verify`: 100 req/min per IP
+```json
+{
+  "revoked": true,
+  "badge_id": "uuid",
+  "revoked_at": "2026-04-15T10:30:00Z"
+}
+```
 
-## 7. Versioning
+## Error Codes (All Endpoints)
 
-- All endpoints are versioned under `/api/v1/`.
-- A breaking change to the RAG pipeline (e.g. new LLM provider, changed prompt template) does not require a new API version if the request/response contract is unchanged.
-- A breaking change to the authorship proof vector schema (e.g. new vector dimensions) increments the session payload contract version; old sessions are grandfathered.
+| Code | Meaning |
+|---|---|
+| `invalid_request` | Missing or malformed request body |
+| `unauthorized` | Missing or invalid JWT |
+| `forbidden` | JWT is valid but the user lacks the required plan/role |
+| `not_found` | Resource not found |
+| `rate_limited` | Too many requests; see `Retry-After` header |
+| `internal_error` | Unexpected server error |
+| `no_eligible_candidates` | All scoped candidates have opted out |
+| `commits_not_eligible` | Some or all commits don't meet the authorship threshold |

@@ -36,6 +36,7 @@
 | 008 | Teamwork score | +5% | Anti-collusion gated |
 | 008 | Recruiter observe | 0 (audit only) | Not a signal |
 | 009 | On-chain mirror | 0 (mirror, not signal) | Trust propagation, not scoring |
+| 010 | AI Talent Twin | 0 (insight surface, not signal) | RAG Q&A + authorship proof badge |
 | **TOTAL upside** | | **+25%** | **004 (15) + 006 (5) + 008 (5)** |
 
 ---

@@ -12,7 +12,9 @@
     "./leaderboard-tie-breakers": "./leaderboard-tie-breakers.ts",
     "./timezone": "./timezone.ts",
     "./whatsapp-cost-guard": "./whatsapp-cost-guard.ts",
-    "./suppress-nudge": "./suppress-nudge.ts"
+    "./suppress-nudge": "./suppress-nudge.ts",
+    "./hash": "./hash.ts",
+    "./score-cap": "./score-cap.ts"
   },
   "scripts": {
     "lint": "eslint .",
