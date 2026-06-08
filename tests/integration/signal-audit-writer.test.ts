@@ -6,12 +6,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const mockInsert = vi.fn();
 const mockFrom = vi.fn(() => ({ insert: mockInsert }));
-const mockSupabase = { from: mockFrom };
-const mockCreateSupabaseServerClient = vi.fn(async () => mockSupabase);
+const mockCreateSupabaseServerClient = vi.fn(async () => ({ from: mockFrom }));
 
 vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServerClient: () => mockCreateSupabaseServerClient(),
 }));
+
+vi.mock("server-only", () => ({}));
 
 const { writeSignalAudit } = await import("@/lib/audit/log");
 

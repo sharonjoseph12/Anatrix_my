@@ -170,9 +170,9 @@ async function assertAppendOnly(): Promise<AssertionResult> {
 async function assertActorIdNotPrematurelyHashed(): Promise<AssertionResult> {
   const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000).toISOString();
 
-  const { data, error } = await supabase
+  const { data: rows, error } = await supabase
     .from("signal_audit")
-    .select("id", { count: "exact", head: true })
+    .select("id, actor_id")
     .gte("created_at", ninetyDaysAgo)
     .isNotNull("actor_id");
 
@@ -180,13 +180,25 @@ async function assertActorIdNotPrematurelyHashed(): Promise<AssertionResult> {
     return { name: "actor_id_not_prematurely_hashed", passed: false, detail: `query error: ${error.message}` };
   }
 
-  const recentNonNullCount = data?.length ?? 0;
-
-  if (recentNonNullCount === 0) {
-    return { name: "actor_id_not_prematurely_hashed", passed: true, detail: "no recent rows with non-null actor_id" };
+  const premature: number[] = [];
+  if (rows) {
+    for (const r of rows) {
+      const idStr = String(r.actor_id);
+      if (idStr.length >= 64) {
+        premature.push(r.id);
+      }
+    }
   }
 
-  return { name: "actor_id_not_prematurely_hashed", passed: true, detail: `${recentNonNullCount} recent rows have non-null actor_id (expected — < 90 days)` };
+  if (premature.length > 0) {
+    return {
+      name: "actor_id_not_prematurely_hashed",
+      passed: false,
+      detail: `WARN: ${premature.length} rows < 90 days have a 64-char actor_id (pseudonymisation ran early): ids ${premature.slice(0, 10).join(",")}${premature.length > 10 ? "..." : ""}`,
+    };
+  }
+
+  return { name: "actor_id_not_prematurely_hashed", passed: true, detail: "no rows < 90 days have a pseudonymised actor_id" };
 }
 
 Deno.serve(async (req) => {
