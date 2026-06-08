@@ -1,0 +1,1570 @@
+openapi: 3.1.0
+
+info:
+  title: Antarix Verifiable Credentials API
+  version: 1.0.0
+  summary: Public W3C VC v2.0 + did:web resolution and authenticated issuance
+  description: |
+    The Antarix Verifiable Credentials API exposes two HTTP endpoints, both
+    implemented as Supabase Edge Functions on `antarix.app/functions/v1`:
+
+    * `GET  /credential-vc-resolve/{did}`  — public, anonymous, rate-limited.
+      Returns a W3C DID Resolution v0.3 envelope (DID Document + resolution
+      metadata + document metadata) plus the W3C VC v2.0 credential and its
+      Data Integrity proof for a single `did:web:antarix.app:c/<uuid>`.
+    * `POST /credential-vc-issue`          — Supabase-JWT-gated. Takes a
+      `credential_id` and runs the 032 SQL helpers
+      `build_vc_document` → `sign_vc_document` → UPDATE, then returns the
+      issued `did`, `vc_document` and `vc_proof` to the caller.
+
+    The issued credentials are W3C Verifiable Credentials v2.0 envelopes
+    signed with the `eddsa-rdfc-2022` cryptosuite. The v1 release of
+    `sign_vc_document` returns a deterministic `sha256` placeholder
+    (not a real EdDSA signature) so the integration shape, DID Resolution
+    flow and third-party verifier contracts can be exercised end-to-end
+    before real EdDSA lands in migration `034_w3c_vc_real_eddsa.sql`.
+    Verifiers MUST therefore be aware that a `proofValue` in the v1
+    release is **not** a valid EdDSA signature; cryptographic verification
+    is gated behind a public rollout — see the `docs/w3c-vc-eddsa-rollout.md`
+    rollout plan. The HTTP contract and response shape are stable.
+  contact:
+    name: Antarix API Team
+    email: api@antarix.app
+    url: https://antarix.app
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: https://antarix.app/legal/terms
+
+externalDocs:
+  description: |
+    Foundational specs for the credential and DID model used here.
+    See also the Antarix-specific implementation notes.
+  url: https://www.w3.org/TR/vc-data-model-2.0/
+
+servers:
+  - url: https://antarix.app/functions/v1
+    description: Production
+  - url: http://localhost:54321/functions/v1
+    description: Local Supabase (supabase start)
+
+tags:
+  - name: "Public: Verification"
+    description: |
+      Public, unauthenticated endpoints for third-party verifiers
+      (LinkedIn, IBM/Accenture HR systems, university alumni portals,
+      Open Badge verifiers, etc.) that need to resolve and verify
+      a student's Antarix Skill Proof credential.
+  - name: "Authed: Issuance"
+    description: |
+      Authenticated endpoints for the Antarix web app. Issuance is
+      intentionally limited: each `credential_id` can only be issued
+      once (idempotency returns 409). Re-issuance is an admin path.
+
+# Global default: endpoints MUST opt in to authentication. The two
+# endpoints in this spec are then annotated individually — the resolve
+# endpoint opts back into the public "none" security scheme, the issue
+# endpoint opts into bearerAuth.
+security: []
+
+paths:
+
+  /credential-vc-resolve/{did}:
+    get:
+      tags:
+        - "Public: Verification"
+      operationId: resolveCredential
+      summary: Resolve a did:web credential and return the W3C DID Resolution envelope
+      description: |
+        Public, anonymous resolution of a single
+        `did:web:antarix.app:c/<uuid>`. Returns the W3C DID Document for
+        the subject, the W3C VC v2.0 envelope, and the EdDSA Data
+        Integrity proof so a DIF-compliant verifier (veramo, vc-js,
+        didkit) can resolve + verify in a single round trip.
+
+        The `did` path parameter is matched against the regex
+        `^did:web:antarix\.app:c\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`
+        (case-insensitive, matching the resolve Edge Function's `/i`
+        flag). A non-matching DID returns 400. A well-formed DID that
+        does not exist in `verifiable_credentials` returns 404 with
+        `didResolutionMetadata.error = "notFound"` (per W3C DID
+        Resolution §1.4). A revoked credential returns 410 with
+        `didDocumentMetadata.deactivated = true`.
+
+        The successful response is served as
+        `application/did+ld+json; profile="https://w3id.org/did-resolution"`
+        with `Cache-Control: public, max-age=60` (60-second CDN edge
+        cache; see §6 of `docs/api-verification.md`).
+
+        **No authentication is required.** This endpoint is gated only
+        by the gateway-level rate limit
+        (`credential-vc-resolve` bucket: 60 burst, 1/s sustained) and
+        a 60-second CDN cache.
+      security:
+        - none: []
+      parameters:
+        - $ref: '#/components/parameters/DidPath'
+        - $ref: '#/components/parameters/TraceparentHeader'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      responses:
+        '200':
+          description: |
+            OK. The full W3C DID Resolution v0.3 envelope plus the
+            Verifiable Credential and its Data Integrity proof.
+          headers:
+            Cache-Control:
+              description: '`public, max-age=60` on the happy path.'
+              schema:
+                type: string
+                examples:
+                  - 'public, max-age=60'
+            Content-Type:
+              description: |
+                Canonical DID+LD resolution media type per
+                https://w3id.org/did-resolution.
+              schema:
+                type: string
+                examples:
+                  - 'application/did+ld+json; profile="https://w3id.org/did-resolution"'
+            X-RateLimit-Remaining:
+              description: Remaining tokens in the resolve bucket.
+              schema:
+                type: integer
+                minimum: 0
+                examples:
+                  - 59
+            Retry-After:
+              description: Always absent on 200; present on 429.
+              schema:
+                type: integer
+          content:
+            application/did+ld+json:
+              schema:
+                $ref: '#/components/schemas/ResolutionResponse'
+              examples:
+                resolvedCredential:
+                  $ref: '#/components/examples/ResolvedCredentialExample'
+        '400':
+          description: '`invalid_did` — the path parameter is not a well-formed `did:web:antarix.app:c/<uuid>`.'
+          headers:
+            Cache-Control:
+              description: '`no-store` on error responses.'
+              schema:
+                type: string
+                examples:
+                  - 'no-store'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                invalidDid:
+                  $ref: '#/components/examples/InvalidDidExample'
+        '404':
+          description: |
+            `notFound` per W3C DID Resolution §1.4. The DID is
+            well-formed but no credential with that DID exists in
+            `verifiable_credentials`. Body is an envelope-shaped
+            response with `didDocument: null` and
+            `didResolutionMetadata.error: "notFound"` so DIF-compliant
+            verifiers can branch on the metadata rather than HTTP alone.
+          headers:
+            Cache-Control:
+              description: '`no-store`.'
+              schema:
+                type: string
+                examples:
+                  - 'no-store'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolutionResponse'
+              examples:
+                notFound:
+                  $ref: '#/components/examples/ResolveNotFoundExample'
+        '410':
+          description: |
+            `revoked` — the credential has been revoked. Returns the
+            DID Document plus `didDocumentMetadata.deactivated = true`
+            (W3C DID Resolution §"Deactivation"). Also returned when
+            the legacy `verifiable_credentials.revocation_status`
+            column is `revoked` for backward-compatibility with the
+            022 migration.
+          headers:
+            Cache-Control:
+              description: '`no-store`.'
+              schema:
+                type: string
+                examples:
+                  - 'no-store'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevokedResponse'
+              examples:
+                revoked:
+                  $ref: '#/components/examples/ResolveRevokedExample'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          description: 'Unexpected database / RPC error. Body: `ApiError` with `error: "db_error"`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                dbError:
+                  value:
+                    error: db_error
+                    message: 'relation "verifiable_credentials" does not exist'
+      x-codeSamples:
+        - lang: curl
+          label: Resolve a credential
+          source: |
+            curl -X GET \
+              'https://antarix.app/functions/v1/credential-vc-resolve/did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6' \
+              -H 'Accept: application/did+ld+json'
+
+  /credential-vc-issue:
+    post:
+      tags:
+        - "Authed: Issuance"
+      operationId: issueCredential
+      summary: Issue a W3C VC v2.0 for an existing verifiable_credentials row
+      description: |
+        Authenticated issuance. The caller's Supabase JWT `sub` MUST own
+        the `verifiable_credentials` row identified by `credential_id`
+        (404 is returned for both "not found" and "not owned" to avoid
+        leaking existence of a foreign UUID).
+
+        The function chains the three SECURITY DEFINER SQL helpers
+        from migration `032_w3c_vc.sql`:
+          1. `public.build_vc_document(credential_id)` → W3C VC v2.0
+             JSON-LD envelope.
+          2. `public.sign_vc_document(credential_id, kid)` → Data
+             Integrity proof (v1 = deterministic `sha256` placeholder
+             over `canonical(doc) || ':' || kid`, base64; v2 = real
+             EdDSA — see `docs/w3c-vc-eddsa-rollout.md`).
+          3. `UPDATE verifiable_credentials SET vc_document, vc_proof,
+             did, issuance_date, expiration_date`.
+
+        Idempotency: re-issuing a row that already has a `vc_document`
+        returns 409 `already_issued`. Re-issuance requires an admin SQL
+        action (`UPDATE … SET vc_document = NULL`).
+
+        The `credential_id` may be supplied as a JSON body field OR as
+        a `?credential_id=` query parameter; the body takes precedence
+        when both are present (matches the Edge Function code).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: credential_id
+          in: query
+          required: false
+          description: |
+            UUID of the `verifiable_credentials` row to issue. Optional
+            if `credential_id` is supplied in the JSON body. When both
+            are present, the body value is used.
+          schema:
+            type: string
+            format: uuid
+            examples:
+              - 3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+        - $ref: '#/components/parameters/TraceparentHeader'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      requestBody:
+        required: false
+        description: |
+          JSON body with a single `credential_id` field. Optional if
+          `credential_id` is supplied as a query parameter.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueRequest'
+            examples:
+              credentialIdInBody:
+                $ref: '#/components/examples/IssueRequestExample'
+      responses:
+        '200':
+          description: |
+            OK. Returns the canonical `did`, the freshly-built
+            `vc_document` envelope, and the `vc_proof` data integrity
+            proof. The same values are persisted to the
+            `verifiable_credentials` row.
+          headers:
+            X-RateLimit-Remaining:
+              description: Remaining tokens in the issue bucket.
+              schema:
+                type: integer
+                minimum: 0
+                examples:
+                  - 4
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+              examples:
+                issued:
+                  $ref: '#/components/examples/IssueResponseExample'
+        '400':
+          description: '`invalid_request` — the body is not valid JSON or `credential_id` is missing / not a UUID.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                invalidRequest:
+                  value:
+                    error: invalid_request
+                    message: credential_id must be a UUID.
+        '401':
+          description: '`unauthorized` — no bearer token, or the token is unparsable.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                unauthorized:
+                  value:
+                    error: unauthorized
+                    message: Missing or invalid bearer token.
+        '404':
+          description: |
+            `not_found` — the `credential_id` does not exist OR the
+            authenticated user does not own the row. The two cases
+            are deliberately indistinguishable to avoid leaking the
+            existence of a foreign UUID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                notFound:
+                  value:
+                    error: not_found
+                    message: Credential not found.
+        '409':
+          description: '`already_issued` — the row already has a `vc_document`. Re-issuance requires an admin SQL action.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                alreadyIssued:
+                  value:
+                    error: already_issued
+                    message: Credential already has a vc_document. Reissuance requires admin action.
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          description: |
+            Server-side error. Body: `ApiError` with one of:
+            `no_issuer_key` (the `vc_issuer_keys` table is empty;
+            seed at least one EdDSA key before issuing),
+            `build_failed`, `sign_failed`, or `db_error`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                noIssuerKey:
+                  value:
+                    error: no_issuer_key
+                    message: vc_issuer_keys is empty; seed at least one EdDSA key before issuing.
+                dbError:
+                  value:
+                    error: db_error
+                    message: connection refused
+      x-codeSamples:
+        - lang: curl
+          label: Issue via JSON body
+          source: |
+            curl -X POST \
+              'https://antarix.app/functions/v1/credential-vc-issue' \
+              -H 'Authorization: Bearer <user-jwt>' \
+              -H 'Content-Type: application/json' \
+              -d '{"credential_id":"3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6"}'
+
+webhooks: {}
+
+components:
+
+  parameters:
+
+    DidPath:
+      name: did
+      in: path
+      required: true
+      description: |
+        A `did:web:antarix.app:c/<uuid>` for an existing Antarix
+        credential. Must match the case-insensitive regex
+        `^did:web:antarix\.app:c\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`
+        (mirrors the `/i` flag on the resolve Edge Function's regex).
+        Raw and percent-encoded forms are both accepted (the
+        Edge Function decodes with `decodeURIComponent`).
+      schema:
+        type: string
+        pattern: '^did:web:antarix\.app:c\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+        examples:
+          - did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+          - 'did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6'
+
+    TraceparentHeader:
+      name: traceparent
+      in: header
+      required: false
+      description: |
+        W3C Trace Context `traceparent` header
+        (`<version>-<trace-id>-<parent-id>-<flags>`). If supplied, the
+        Edge Function joins the existing trace and echoes the header
+        back on the response. If absent, the function generates a new
+        trace and returns it.
+      schema:
+        type: string
+        pattern: '^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$'
+        examples:
+          - '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01'
+
+    XRequestIdHeader:
+      name: x-request-id
+      in: header
+      required: false
+      description: |
+        Caller-supplied request ID. If absent, the Edge Function
+        generates a UUIDv4. Returned verbatim on the response as
+        `x-request-id`.
+      schema:
+        type: string
+        format: uuid
+        examples:
+          - 7d4f8a2b-3c1e-4a5f-9b2d-1e0f7a8b6c9d
+
+  responses:
+
+    RateLimited:
+      description: |
+        `429 Too Many Requests`. The per-bucket token quota is empty.
+        `Retry-After` carries the seconds-to-refill, `X-RateLimit-Remaining`
+        carries the new remaining count. See `docs/rate-limiting.md` for
+        the per-endpoint quotas.
+      headers:
+        Retry-After:
+          description: Seconds the caller should wait before retrying.
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            examples:
+              - 1
+        X-RateLimit-Remaining:
+          description: Tokens remaining in the bucket after this request.
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+            examples:
+              - 0
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RateLimitError'
+          examples:
+            rateLimited:
+              value:
+                error: rate_limited
+                retry_after: 1
+
+  securitySchemes:
+
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Supabase-issued JWT. Pass in the `Authorization` header as
+        `Bearer <jwt>`. The token's `sub` claim is the Supabase user
+        UUID; it must match the `user_id` of the `verifiable_credentials`
+        row for `/credential-vc-issue` to succeed.
+
+    none:
+      type: apiKey
+      in: header
+      name: X-Public
+      description: |
+        **Marker scheme only — the header value is ignored.**
+        Used to explicitly annotate operations that require **no**
+        authentication. Functional opt-out is via `security: [{ none: [] }]`
+        on the operation, which overrides any global `security` block.
+        The Edge Function must be deployed with
+        `--no-verify-jwt` (the Supabase CLI flag that disables JWT
+        verification at the gateway).
+
+  schemas:
+
+    DIDDocument:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      title: W3C DID Document
+      description: |
+        Per W3C DID Core 1.0. A self-describing JSON document that
+        contains the cryptographic material needed to verify proofs
+        made by the DID subject.
+
+        Antarix's `resolve_did` SQL helper returns a minimal document
+        populated from the earliest entry in `public.vc_issuer_keys`.
+        It includes `@context`, `id`, `verificationMethod[]` and
+        `assertionMethod[]`; `authentication[]` is not currently set
+        by the resolver and is reserved for a follow-up
+        (`did:web` + ION key upgrade). `controller` and `service[]`
+        are included here for full W3C compliance.
+      required:
+        - '@context'
+        - id
+        - verificationMethod
+        - assertionMethod
+      properties:
+        '@context':
+          type: array
+          description: JSON-LD context URIs.
+          items:
+            type: string
+            format: uri
+          minItems: 1
+          examples:
+            - - 'https://www.w3.org/ns/did/v1'
+        id:
+          type: string
+          description: The DID that this document is about.
+          pattern: '^did:web:antarix\.app:c\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+          examples:
+            - did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+        alsoKnownAs:
+          type: array
+          description: Other URIs that identify the same subject.
+          items:
+            type: string
+            format: uri
+        controller:
+          oneOf:
+            - type: string
+              format: uri
+            - type: array
+              items:
+                type: string
+                format: uri
+        verificationMethod:
+          type: array
+          description: |
+            Cryptographic material that the DID subject (or a
+            delegate) can use to verify proofs. Currently a single
+            entry — the earliest `vc_issuer_keys.kid` — but the
+            array shape lets Antarix rotate keys without breaking
+            the DID document contract.
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/VerificationMethod'
+        authentication:
+          type: array
+          description: |
+            Verification relationships used to authenticate the DID
+            subject. Currently empty in the Antarix resolver output.
+          items:
+            oneOf:
+              - type: string
+                format: uri
+              - $ref: '#/components/schemas/VerificationMethod'
+        assertionMethod:
+          type: array
+          description: |
+            Verification relationships used by the DID subject to
+            assert claims (e.g., to sign a Verifiable Credential).
+          minItems: 1
+          items:
+            type: string
+            format: uri
+          examples:
+            - - 'did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6#k-antarix-2026-01'
+        keyAgreement:
+          type: array
+          description: Verification relationships for key agreement protocols.
+          items:
+            oneOf:
+              - type: string
+                format: uri
+              - $ref: '#/components/schemas/VerificationMethod'
+        capabilityInvocation:
+          type: array
+          items:
+            oneOf:
+              - type: string
+                format: uri
+              - $ref: '#/components/schemas/VerificationMethod'
+        capabilityDelegation:
+          type: array
+          items:
+            oneOf:
+              - type: string
+                format: uri
+              - $ref: '#/components/schemas/VerificationMethod'
+        service:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceEndpoint'
+      additionalProperties: true
+      examples:
+        - '@context':
+            - 'https://www.w3.org/ns/did/v1'
+          id: did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+          verificationMethod:
+            - id: 'did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6#k-antarix-2026-01'
+              type: Ed25519VerificationKey2020
+              controller: did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+              publicKeyMultibase: z6MkiVnzH6XbvJ6dEfmF3gUvYs9kWqLg4ZqK1b8a3Cf2VnQrR
+          assertionMethod:
+            - 'did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6#k-antarix-2026-01'
+
+    VerificationMethod:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      title: DID Verification Method
+      description: |
+        A single cryptographic verification method as defined in W3C
+        DID Core §5.3.1. The `id` is a DID-URL fragment (e.g.
+        `did:web:antarix.app:c/<uuid>#<kid>`) that is also listed
+        under `assertionMethod[]`.
+      required:
+        - id
+        - type
+        - controller
+      properties:
+        id:
+          type: string
+          format: uri
+          pattern: '^did:web:antarix\.app:c\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}#[A-Za-z0-9._-]+$'
+          examples:
+            - 'did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6#k-antarix-2026-01'
+        type:
+          type: string
+          description: Verification method type. Antarix uses `Ed25519VerificationKey2020` for the v1 issuer key.
+          enum:
+            - Ed25519VerificationKey2020
+            - Ed25519VerificationKey2018
+            - JsonWebKey2020
+            - EcdsaSecp256k1VerificationKey2019
+          examples:
+            - Ed25519VerificationKey2020
+        controller:
+          type: string
+          format: uri
+          description: DID of the entity that controls the private key for this method.
+          examples:
+            - did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+        publicKeyMultibase:
+          type: string
+          description: |
+            Multibase-encoded public key. `z` prefix indicates
+            base58btc; the bytes that follow are the raw Ed25519
+            public key (32 bytes) for the Antarix issuer key.
+          examples:
+            - z6MkiVnzH6XbvJ6dEfmF3gUvYs9kWqLg4ZqK1b8a3Cf2VnQrR
+        publicKeyJwk:
+          type: object
+          description: JWK form. Alternative to `publicKeyMultibase`.
+          additionalProperties: true
+      additionalProperties: true
+
+    ServiceEndpoint:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      title: DID Service Endpoint
+      description: Per W3C DID Core §5.4.
+      required:
+        - id
+        - type
+        - serviceEndpoint
+      properties:
+        id:
+          type: string
+          format: uri
+        type:
+          type: string
+        serviceEndpoint:
+          oneOf:
+            - type: string
+              format: uri
+            - type: array
+              items:
+                type: string
+                format: uri
+            - type: object
+              additionalProperties: true
+      additionalProperties: true
+
+    DIDResolutionMetadata:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      title: DID Resolution Metadata
+      description: |
+        W3C DID Resolution §1.3. Carries resolution-protocol
+        metadata. The `error` and `errorMessage` fields are the
+        canonical signals from the spec; Antarix only sets `error`
+        when there is an explicit resolution failure (e.g.
+        `notFound` on 404).
+      properties:
+        contentType:
+          type: string
+          description: |
+            Media type of the `didDocument`. Antarix always returns
+            `application/did+json` per W3C DID Resolution §"Media
+            Types".
+          enum:
+            - application/did+json
+            - application/did+ld+json
+          examples:
+            - application/did+json
+        error:
+          type: string
+          description: |
+            Canonical resolution error per W3C DID Resolution. Antarix
+            sets this to `notFound` on 404 responses and omits it
+            otherwise. The DID Resolution spec defines
+            `invalidDID`, `notFound`, `representationNotSupported`,
+            `deactivated`, and `internalError` among others.
+          enum:
+            - invalidDID
+            - notFound
+            - representationNotSupported
+            - deactivated
+            - internalError
+          examples:
+            - notFound
+        errorMessage:
+          type: string
+          description: Human-readable expansion of `error`, if available.
+        retrieved:
+          type: string
+          format: date-time
+          description: |
+            Wall-clock time the resolver fetched the DID Document.
+            Useful for verifiers that want to detect stale cache hits
+            from the CDN.
+      additionalProperties: true
+      examples:
+        - contentType: application/did+json
+          retrieved: '2026-06-06T12:34:56.789Z'
+
+    DIDDocumentMetadata:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      title: DID Document Metadata
+      description: |
+        W3C DID Resolution §1.3. Per-document metadata. Antarix
+        populates `created` from `verifiable_credentials.issuance_date`,
+        `updated` from `updated_at`, `deactivated` from the revocation
+        check, and `nextUpdate` from `expiration_date`. A `deactivated
+        = true` value always accompanies a 410 response.
+      properties:
+        created:
+          type: string
+          format: date-time
+          description: 'When the DID Document was created (issuance date of the credential).'
+          examples:
+            - '2026-06-06T08:00:00.000Z'
+        updated:
+          type: string
+          format: date-time
+          description: 'When the DID Document was last updated.'
+          examples:
+            - '2026-06-06T08:00:00.000Z'
+        deactivated:
+          type: boolean
+          description: |
+            `true` once the credential is revoked (either via
+            `vc_revocations` or the legacy
+            `verifiable_credentials.revocation_status` column).
+            Triggers a 410 response.
+          default: false
+          examples:
+            - false
+        deactivatedAt:
+          type: string
+          format: date-time
+          description: Timestamp of deactivation, when known.
+        nextUpdate:
+          type: string
+          format: date-time
+          description: |
+            `expiration_date` of the credential. After this time,
+            verifiers should treat the credential as expired even
+            though `deactivated = false`.
+        versionId:
+          type: string
+          description: Opaque version identifier. Not currently set by Antarix.
+        canonicalId:
+          type: string
+          format: uri
+          description: Canonical DID. Not currently set by Antarix.
+        equivalentId:
+          type: array
+          items:
+            type: string
+            format: uri
+      additionalProperties: true
+      examples:
+        - created: '2026-06-06T08:00:00.000Z'
+          updated: '2026-06-06T08:00:00.000Z'
+          deactivated: false
+          nextUpdate: '2028-06-06T08:00:00.000Z'
+
+    VerifiableCredential:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      title: W3C Verifiable Credential v2.0
+      description: |
+        W3C Verifiable Credentials Data Model 2.0 envelope. The
+        `@context` array is the canonical v2.0 context plus the
+        Antarix-specific skill-proof context
+        (`https://antarix.app/credentials/skill-proof/v1`). The
+        `type` array contains `VerifiableCredential` and the
+        `AntarixSkillProof` subtype.
+
+        The actual `proof` lives next to the credential in the
+        `ResolutionResponse.credentialProof` field (per DIF
+        DID-Resolution §1.3, the proof is a sibling of the
+        credential, not a child). Issuance returns the proof as
+        `vc_proof`.
+      required:
+        - '@context'
+        - type
+        - issuer
+        - validFrom
+        - validUntil
+        - credentialSubject
+      properties:
+        '@context':
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uri
+          examples:
+            - - 'https://www.w3.org/ns/credentials/v2'
+              - 'https://antarix.app/credentials/skill-proof/v1'
+        id:
+          type: string
+          format: uri
+          description: |
+            URL identifying this credential. Antarix uses
+            `https://antarix.app/verify/<slug>/vc`.
+          examples:
+            - 'https://antarix.app/verify/sharon-dave/vc'
+        type:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          examples:
+            - - VerifiableCredential
+              - AntarixSkillProof
+        issuer:
+          oneOf:
+            - type: string
+              format: uri
+            - type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+                  format: uri
+                name:
+                  type: string
+              additionalProperties: true
+          description: |
+            The issuer's DID. Antarix issues as `did:web:antarix.app`
+            (or whatever `issuer_did` is configured to).
+          examples:
+            - did:web:antarix.app
+        validFrom:
+          type: string
+          format: date-time
+          description: '`issuance_date` — when the credential became valid.'
+          examples:
+            - '2026-06-06T08:00:00Z'
+        validUntil:
+          type: string
+          format: date-time
+          description: '`expiration_date` — when the credential expires (default issuance + 2 years).'
+          examples:
+            - '2028-06-06T08:00:00Z'
+        credentialSubject:
+          $ref: '#/components/schemas/CredentialSubject'
+        credentialStatus:
+          type: object
+          description: |
+            W3C VC Status List 2021 v1 entry. Not currently set by
+            Antarix — revocation is surfaced through
+            `didDocumentMetadata.deactivated` in the resolve
+            envelope. Reserved for a follow-up.
+          additionalProperties: true
+        termsOfUse:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        evidence:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      additionalProperties: true
+      examples:
+        - '@context':
+            - 'https://www.w3.org/ns/credentials/v2'
+            - 'https://antarix.app/credentials/skill-proof/v1'
+          id: 'https://antarix.app/verify/sharon-dave/vc'
+          type:
+            - VerifiableCredential
+            - AntarixSkillProof
+          issuer: did:web:antarix.app
+          validFrom: '2026-06-06T08:00:00Z'
+          validUntil: '2028-06-06T08:00:00Z'
+          credentialSubject:
+            id: did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+            type:
+              - AntarixSkillSubject
+            antarixSlug: sharon-dave
+            overallScore: 86
+            perSkill:
+              PostgreSQL: 92
+              Go: 81
+              TypeScript: 74
+            activityTotals:
+              commits90d: 213
+              pullRequestsMerged90d: 14
+              issuesClosed90d: 9
+            cohortPercentile: 78
+            snapshotTakenAt: '2026-06-05T22:00:00Z'
+
+    CredentialSubject:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      title: Antarix Skill Proof Credential Subject
+      description: |
+        The `credentialSubject` payload. Includes the subject's DID
+        plus the snapshot of their skill and activity data that
+        Antarix committed to at issuance time. All numeric fields
+        are deterministic, machine-readable integers.
+      required:
+        - id
+        - type
+        - overallScore
+      properties:
+        id:
+          type: string
+          description: Subject DID. `did:web:antarix.app:c/<uuid>` for an Antarix user.
+          pattern: '^did:web:antarix\.app:c\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+          examples:
+            - did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+        type:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          examples:
+            - - AntarixSkillSubject
+        antarixSlug:
+          type: string
+          description: 'Public slug, when the user has claimed one.'
+          examples:
+            - sharon-dave
+        overallScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: The Antarix Skill Proof Score, 0–100.
+          examples:
+            - 86
+        perSkill:
+          type: object
+          description: |
+            Per-skill scores keyed by skill name. Each value is an
+            integer 0–100. Empty `{}` is allowed for new users.
+          additionalProperties:
+            type: integer
+            minimum: 0
+            maximum: 100
+          examples:
+            - PostgreSQL: 92
+              Go: 81
+              TypeScript: 74
+              React: 68
+        activityTotals:
+          type: object
+          description: |
+            Activity aggregates over the last 90 days. Field names
+            are stable; values are integers.
+          additionalProperties:
+            type: integer
+            minimum: 0
+          examples:
+            - commits90d: 213
+              pullRequestsMerged90d: 14
+              issuesClosed90d: 9
+              activeDays90d: 67
+        cohortPercentile:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: |
+            Where the subject ranks in their declared cohort
+            (graduation year + institution), 0–100. `null` is
+            allowed if the cohort has fewer than 30 members
+            (privacy fallback).
+          oneOf:
+            - type: integer
+              minimum: 0
+              maximum: 100
+            - type: 'null'
+          examples:
+            - 78
+        snapshotTakenAt:
+          type: string
+          format: date-time
+          description: |
+            Wall-clock time the snapshot was taken. Reproducible
+            from `verifiable_credentials.snapshot_taken_at`.
+          examples:
+            - '2026-06-05T22:00:00Z'
+      additionalProperties: true
+
+    DataIntegrityProof:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      title: W3C Data Integrity Proof (eddsa-rdfc-2022)
+      description: |
+        W3C Data Integrity proof. The `cryptosuite` is
+        `eddsa-rdfc-2022`; the public key that should be used to
+        verify is the `verificationMethod` entry on the DID
+        Document. The `proofValue` is a multibase-encoded base64
+        string — `m<base64>` once real EdDSA is wired in (migration
+        `034_w3c_vc_real_eddsa.sql`); the v1 stub returns a plain
+        base64 sha256 placeholder, see `docs/w3c-vc-impl.md` §3.
+      required:
+        - type
+        - cryptosuite
+        - verificationMethod
+        - created
+        - proofPurpose
+        - proofValue
+      properties:
+        type:
+          type: string
+          enum:
+            - DataIntegrityProof
+          examples:
+            - DataIntegrityProof
+        cryptosuite:
+          type: string
+          enum:
+            - eddsa-rdfc-2022
+          description: |
+            The W3C Data Integrity cryptosuite. `eddsa-rdfc-2022`
+            signs the RDFC-1.0 canonical form of the document with
+            an Ed25519 key.
+          examples:
+            - eddsa-rdfc-2022
+        verificationMethod:
+          type: string
+          format: uri
+          description: |
+            The DID-URL of the verification method on the DID
+            Document. Must be present in the issuer's
+            `verificationMethod[]` and in `assertionMethod[]`.
+          pattern: '^did:web:antarix\.app(#.*)?$'
+          examples:
+            - 'did:web:antarix.app#k-antarix-2026-01'
+        created:
+          type: string
+          format: date-time
+          description: When the proof was created.
+          examples:
+            - '2026-06-06T08:00:00Z'
+        proofPurpose:
+          type: string
+          enum:
+            - assertionMethod
+            - authentication
+            - capabilityDelegation
+            - capabilityInvocation
+            - keyAgreement
+          examples:
+            - assertionMethod
+        expires:
+          type: string
+          format: date-time
+          description: Optional proof expiration. Not set by Antarix today.
+        domain:
+          type: array
+          description: |
+            Restricts the proof to a particular domain (per W3C
+            Data Integrity §4.1). Not set by Antarix today.
+          items:
+            type: string
+        challenge:
+          type: string
+          description: Per W3C Data Integrity §4.1. Not set by Antarix today.
+        proofValue:
+          type: string
+          description: |
+            Multibase-encoded base64 signature. v1 returns a plain
+            base64 sha256 placeholder; v2 (post-`034_*` migration)
+            will return `m<base64>` for EdDSA.
+          examples:
+            - mH9zN2uPDk8jS5fW3xY7qA1bC6dE0gI4jK2lM9nO5pQ8rS3tU7vW
+            - 4bf92f3577b34da6a3ce929d0e0e4736
+      additionalProperties: true
+
+    ResolutionResponse:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      title: W3C DID Resolution v0.3 envelope + credential + proof
+      description: |
+        Response body of `GET /credential-vc-resolve/{did}`. Combines
+        the W3C DID Resolution v0.3 envelope (`didDocument` +
+        `didResolutionMetadata` + `didDocumentMetadata`) with the
+        Antarix skill-proof credential and its data integrity proof.
+
+        In the 404 case `didDocument` is `null` and
+        `didResolutionMetadata.error` is set to `notFound`. In the
+        410 case `didDocumentMetadata.deactivated` is `true`.
+      required:
+        - didDocument
+        - didResolutionMetadata
+        - didDocumentMetadata
+        - credential
+        - credentialProof
+      properties:
+        didDocument:
+          oneOf:
+            - $ref: '#/components/schemas/DIDDocument'
+            - type: 'null'
+          description: |
+            The W3C DID Document. `null` in the 404 case.
+        didResolutionMetadata:
+          $ref: '#/components/schemas/DIDResolutionMetadata'
+        didDocumentMetadata:
+          $ref: '#/components/schemas/DIDDocumentMetadata'
+        credential:
+          oneOf:
+            - $ref: '#/components/schemas/VerifiableCredential'
+            - type: 'null'
+          description: The W3C VC v2.0 envelope. `null` in the 404 case.
+        credentialProof:
+          oneOf:
+            - $ref: '#/components/schemas/DataIntegrityProof'
+            - type: 'null'
+          description: The Data Integrity proof. `null` in the 404 case.
+      additionalProperties: true
+      examples:
+        - didDocument:
+            '@context':
+              - 'https://www.w3.org/ns/did/v1'
+            id: did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+            verificationMethod:
+              - id: 'did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6#k-antarix-2026-01'
+                type: Ed25519VerificationKey2020
+                controller: did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+                publicKeyMultibase: z6MkiVnzH6XbvJ6dEfmF3gUvYs9kWqLg4ZqK1b8a3Cf2VnQrR
+            assertionMethod:
+              - 'did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6#k-antarix-2026-01'
+          didResolutionMetadata:
+            contentType: application/did+json
+            retrieved: '2026-06-06T12:34:56.789Z'
+          didDocumentMetadata:
+            created: '2026-06-06T08:00:00.000Z'
+            updated: '2026-06-06T08:00:00.000Z'
+            deactivated: false
+            nextUpdate: '2028-06-06T08:00:00.000Z'
+          credential:
+            '@context':
+              - 'https://www.w3.org/ns/credentials/v2'
+              - 'https://antarix.app/credentials/skill-proof/v1'
+            id: 'https://antarix.app/verify/sharon-dave/vc'
+            type:
+              - VerifiableCredential
+              - AntarixSkillProof
+            issuer: did:web:antarix.app
+            validFrom: '2026-06-06T08:00:00Z'
+            validUntil: '2028-06-06T08:00:00Z'
+            credentialSubject:
+              id: did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+              type:
+                - AntarixSkillSubject
+              antarixSlug: sharon-dave
+              overallScore: 86
+              perSkill:
+                PostgreSQL: 92
+                Go: 81
+                TypeScript: 74
+              activityTotals:
+                commits90d: 213
+                pullRequestsMerged90d: 14
+                issuesClosed90d: 9
+              cohortPercentile: 78
+              snapshotTakenAt: '2026-06-05T22:00:00Z'
+          credentialProof:
+            type: DataIntegrityProof
+            cryptosuite: eddsa-rdfc-2022
+            verificationMethod: 'did:web:antarix.app#k-antarix-2026-01'
+            created: '2026-06-06T08:00:00Z'
+            proofPurpose: assertionMethod
+            proofValue: mH9zN2uPDk8jS5fW3xY7qA1bC6dE0gI4jK2lM9nO5pQ8rS3tU7vW
+
+    RevokedResponse:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      title: 410 Revoked response
+      description: |
+        410 response body for a revoked credential. Combines the
+        envelope shape with the W3C DID Resolution
+        `didDocumentMetadata.deactivated = true` signal and Antarix
+        extras (`revoked_at`, `reason`).
+      required:
+        - error
+        - message
+        - didDocument
+        - didResolutionMetadata
+        - didDocumentMetadata
+      properties:
+        error:
+          type: string
+          const: revoked
+        message:
+          type: string
+          examples:
+            - Credential has been revoked.
+        revoked_at:
+          oneOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        reason:
+          oneOf:
+            - type: string
+            - type: 'null'
+        didDocument:
+          $ref: '#/components/schemas/DIDDocument'
+        didResolutionMetadata:
+          $ref: '#/components/schemas/DIDResolutionMetadata'
+        didDocumentMetadata:
+          $ref: '#/components/schemas/DIDDocumentMetadata'
+      additionalProperties: true
+      examples:
+        - error: revoked
+          message: Credential has been revoked.
+          revoked_at: '2026-06-06T09:00:00.000Z'
+          reason: account_deletion
+          didDocument:
+            '@context':
+              - 'https://www.w3.org/ns/did/v1'
+            id: did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+            verificationMethod:
+              - id: 'did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6#k-antarix-2026-01'
+                type: Ed25519VerificationKey2020
+                controller: did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+                publicKeyMultibase: z6MkiVnzH6XbvJ6dEfmF3gUvYs9kWqLg4ZqK1b8a3Cf2VnQrR
+            assertionMethod:
+              - 'did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6#k-antarix-2026-01'
+          didResolutionMetadata:
+            contentType: application/did+json
+          didDocumentMetadata:
+            deactivated: true
+            deactivatedAt: '2026-06-06T09:00:00.000Z'
+
+    IssueRequest:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      title: Issue request body
+      description: |
+        Body for `POST /credential-vc-issue`. `credential_id` may
+        also be supplied as a `?credential_id=` query parameter;
+        the body wins when both are present.
+      required:
+        - credential_id
+      properties:
+        credential_id:
+          type: string
+          format: uuid
+          description: UUID of the `verifiable_credentials` row to issue.
+          examples:
+            - 3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+      additionalProperties: false
+
+    IssueResponse:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      title: Issue response body
+      description: |
+        Body returned on a successful `POST /credential-vc-issue`.
+        These three fields are also persisted to the
+        `verifiable_credentials` row (`did`, `vc_document`,
+        `vc_proof`) — the response and the DB end up in the same
+        state.
+      required:
+        - did
+        - vc_document
+        - vc_proof
+      properties:
+        did:
+          type: string
+          description: |
+            The canonical DID assigned to the credential
+            (`did:web:antarix.app:c/<uuid>`).
+          pattern: '^did:web:antarix\.app:c\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+          examples:
+            - did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+        vc_document:
+          $ref: '#/components/schemas/VerifiableCredential'
+        vc_proof:
+          $ref: '#/components/schemas/DataIntegrityProof'
+      additionalProperties: false
+      examples:
+        - did: did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+          vc_document:
+            '@context':
+              - 'https://www.w3.org/ns/credentials/v2'
+              - 'https://antarix.app/credentials/skill-proof/v1'
+            id: 'https://antarix.app/verify/sharon-dave/vc'
+            type:
+              - VerifiableCredential
+              - AntarixSkillProof
+            issuer: did:web:antarix.app
+            validFrom: '2026-06-06T08:00:00Z'
+            validUntil: '2028-06-06T08:00:00Z'
+            credentialSubject:
+              id: did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+              type:
+                - AntarixSkillSubject
+              antarixSlug: sharon-dave
+              overallScore: 86
+              perSkill:
+                PostgreSQL: 92
+                Go: 81
+              activityTotals:
+                commits90d: 213
+              cohortPercentile: 78
+              snapshotTakenAt: '2026-06-05T22:00:00Z'
+          vc_proof:
+            type: DataIntegrityProof
+            cryptosuite: eddsa-rdfc-2022
+            verificationMethod: 'did:web:antarix.app#k-antarix-2026-01'
+            created: '2026-06-06T08:00:00Z'
+            proofPurpose: assertionMethod
+            proofValue: 4bf92f3577b34da6a3ce929d0e0e4736
+
+    ApiError:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      title: Generic API error
+      description: |
+        Standard error envelope for 400, 401, 404, 409, 500 responses.
+        The `error` field is a stable machine-readable code; the
+        `message` field is a human-readable expansion.
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Stable machine-readable error code.
+          examples:
+            - invalid_did
+            - not_found
+            - already_issued
+            - unauthorized
+            - invalid_request
+            - db_error
+            - no_issuer_key
+            - build_failed
+            - sign_failed
+        message:
+          type: string
+          description: Human-readable error message.
+          examples:
+            - 'DID must match did:web:antarix.app:c/<uuid>.'
+      additionalProperties: false
+
+    RateLimitError:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      title: 429 Rate-limit error
+      description: |
+        429 response body. `retry_after` is also surfaced in the
+        `Retry-After` response header.
+      required:
+        - error
+        - retry_after
+      properties:
+        error:
+          type: string
+          const: rate_limited
+        retry_after:
+          type: integer
+          minimum: 0
+          description: Seconds the caller should wait before retrying.
+          examples:
+            - 1
+      additionalProperties: false
+      examples:
+        - error: rate_limited
+          retry_after: 1
+
+  examples:
+
+    ResolvedCredentialExample:
+      summary: Successful resolve of an issued skill proof
+      description: 200 response from `GET /credential-vc-resolve/{did}`.
+      value:
+        didDocument:
+          '@context':
+            - 'https://www.w3.org/ns/did/v1'
+          id: did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+          verificationMethod:
+            - id: 'did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6#k-antarix-2026-01'
+              type: Ed25519VerificationKey2020
+              controller: did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+              publicKeyMultibase: z6MkiVnzH6XbvJ6dEfmF3gUvYs9kWqLg4ZqK1b8a3Cf2VnQrR
+          assertionMethod:
+            - 'did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6#k-antarix-2026-01'
+        didResolutionMetadata:
+          contentType: application/did+json
+          retrieved: '2026-06-06T12:34:56.789Z'
+        didDocumentMetadata:
+          created: '2026-06-06T08:00:00.000Z'
+          updated: '2026-06-06T08:00:00.000Z'
+          deactivated: false
+          nextUpdate: '2028-06-06T08:00:00.000Z'
+        credential:
+          '@context':
+            - 'https://www.w3.org/ns/credentials/v2'
+            - 'https://antarix.app/credentials/skill-proof/v1'
+          id: 'https://antarix.app/verify/sharon-dave/vc'
+          type:
+            - VerifiableCredential
+            - AntarixSkillProof
+          issuer: did:web:antarix.app
+          validFrom: '2026-06-06T08:00:00Z'
+          validUntil: '2028-06-06T08:00:00Z'
+          credentialSubject:
+            id: did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+            type:
+              - AntarixSkillSubject
+            antarixSlug: sharon-dave
+            overallScore: 86
+            perSkill:
+              PostgreSQL: 92
+              Go: 81
+              TypeScript: 74
+              React: 68
+            activityTotals:
+              commits90d: 213
+              pullRequestsMerged90d: 14
+              issuesClosed90d: 9
+              activeDays90d: 67
+            cohortPercentile: 78
+            snapshotTakenAt: '2026-06-05T22:00:00Z'
+        credentialProof:
+          type: DataIntegrityProof
+          cryptosuite: eddsa-rdfc-2022
+          verificationMethod: 'did:web:antarix.app#k-antarix-2026-01'
+          created: '2026-06-06T08:00:00Z'
+          proofPurpose: assertionMethod
+          proofValue: 4bf92f3577b34da6a3ce929d0e0e4736
+
+    InvalidDidExample:
+      summary: Malformed DID in the path
+      description: 400 `invalid_did` response.
+      value:
+        error: invalid_did
+        message: 'DID must match did:web:antarix.app:c/<uuid>.'
+
+    ResolveNotFoundExample:
+      summary: Well-formed DID that has no credential
+      description: 404 envelope-shaped response per W3C DID Resolution §1.4.
+      value:
+        error: not_found
+        message: 'DID is well-formed but no credential with that DID exists.'
+        didDocument: null
+        didResolutionMetadata:
+          contentType: application/did+json
+          error: notFound
+        didDocumentMetadata: {}
+
+    ResolveRevokedExample:
+      summary: Credential revoked via `vc_revocations` or `revocation_status`
+      description: 410 response with `didDocumentMetadata.deactivated = true`.
+      value:
+        error: revoked
+        message: Credential has been revoked.
+        revoked_at: '2026-06-06T09:00:00.000Z'
+        reason: account_deletion
+        didDocument:
+          '@context':
+            - 'https://www.w3.org/ns/did/v1'
+          id: did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+          verificationMethod:
+            - id: 'did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6#k-antarix-2026-01'
+              type: Ed25519VerificationKey2020
+              controller: did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+              publicKeyMultibase: z6MkiVnzH6XbvJ6dEfmF3gUvYs9kWqLg4ZqK1b8a3Cf2VnQrR
+          assertionMethod:
+            - 'did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6#k-antarix-2026-01'
+        didResolutionMetadata:
+          contentType: application/did+json
+        didDocumentMetadata:
+          deactivated: true
+          deactivatedAt: '2026-06-06T09:00:00.000Z'
+
+    IssueRequestExample:
+      summary: Issue request body
+      description: '`{ "credential_id": "<uuid>" }` is the canonical JSON body.'
+      value:
+        credential_id: 3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+
+    IssueResponseExample:
+      summary: Issue response body
+      description: 200 response from `POST /credential-vc-issue`.
+      value:
+        did: did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+        vc_document:
+          '@context':
+            - 'https://www.w3.org/ns/credentials/v2'
+            - 'https://antarix.app/credentials/skill-proof/v1'
+          id: 'https://antarix.app/verify/sharon-dave/vc'
+          type:
+            - VerifiableCredential
+            - AntarixSkillProof
+          issuer: did:web:antarix.app
+          validFrom: '2026-06-06T08:00:00Z'
+          validUntil: '2028-06-06T08:00:00Z'
+          credentialSubject:
+            id: did:web:antarix.app:c/3e1f9a2b-7c5d-4f8a-9e10-b1c2d3e4f5a6
+            type:
+              - AntarixSkillSubject
+            antarixSlug: sharon-dave
+            overallScore: 86
+            perSkill:
+              PostgreSQL: 92
+              Go: 81
+            activityTotals:
+              commits90d: 213
+            cohortPercentile: 78
+            snapshotTakenAt: '2026-06-05T22:00:00Z'
+        vc_proof:
+          type: DataIntegrityProof
+          cryptosuite: eddsa-rdfc-2022
+          verificationMethod: 'did:web:antarix.app#k-antarix-2026-01'
+          created: '2026-06-06T08:00:00Z'
+          proofPurpose: assertionMethod
+          proofValue: 4bf92f3577b34da6a3ce929d0e0e4736

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Dependencies
 node_modules/
 .pnpm-store/
@@ -12,10 +13,29 @@ next-env.d.ts
 
 # Supabase local
 .supabase/
+=======
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Testing
+coverage/
+*.lcov
+.nyc_output/
+
+# Production
+*.tsbuildinfo
+>>>>>>> 002-antarix-definitive-vision
 
 # Environment
 .env
 .env.local
+<<<<<<< HEAD
 .env.*.local
 
 # IDE
@@ -23,12 +43,28 @@ next-env.d.ts
 .vscode/
 *.swp
 *.swo
+=======
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+>>>>>>> 002-antarix-definitive-vision
 
 # OS
 .DS_Store
 Thumbs.db
 desktop.ini
 
+<<<<<<< HEAD
 # Graphify output (regenerable)
 graphify-out/
 
@@ -37,4 +73,35 @@ npm-debug.log*
 pnpm-debug.log*
 
 # Antigravity / Gemini local state
+=======
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Turbo
+.turbo/
+
+# Supabase
+supabase/.branches
+supabase/.temp
+supabase/.env
+
+# Chrome Extension
+apps/extension/dist/
+apps/extension/build/
+
+# Temporary
+*.tmp
+*.temp
+.cache/
+
+# Graphify (build cache)
+graphify-out/
+
+# Gemini IDE
+>>>>>>> 002-antarix-definitive-vision
 .gemini/

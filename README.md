@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # Antarix — Verified Skill Proof Ecosystem → 12/10
+=======
+# Antarix — Verified Skill Proof Ecosystem
+>>>>>>> 002-antarix-definitive-vision
 
 > Track. Prove. Hire. The verified skill proof ecosystem connecting students, colleges, and companies.
 
@@ -10,6 +14,7 @@ Antarix is a multi-portal SaaS platform that creates a verified skill proof pipe
 - **Colleges** manage placement readiness and match students with companies
 - **Companies** search verified candidate profiles and hire based on data, not resumes
 
+<<<<<<< HEAD
 ## 12/10 Vision (6 active features)
 
 | # | Feature | Priority | Status | Migration |
@@ -23,16 +28,23 @@ Antarix is a multi-portal SaaS platform that creates a verified skill proof pipe
 
 See [`specs/_roadmap/cross-feature-rollout.md`](specs/_roadmap/cross-feature-rollout.md) for the sprint plan, dependency graph, and risk register.
 
+=======
+>>>>>>> 002-antarix-definitive-vision
 ## Tech Stack
 
 - **Monorepo**: Turborepo + pnpm workspaces
 - **Frontend**: Next.js 15 (App Router) + TypeScript + Tailwind CSS v4 + shadcn/ui
+<<<<<<< HEAD
 - **Mobile**: React Native + Expo SDK 51 (w/ Expo Router + EAS Build)
 - **Backend**: Supabase (Auth + PostgreSQL + pgvector + Edge Functions + Realtime)
 - **Extension**: Chrome MV3 + Vite
 - **Collaboration**: Y.js CRDT + Liveblocks + LiveKit (WebRTC)
 - **Automation**: Playwright (headless form-filler, test suite)
 - **On-Chain**: EAS (Ethereum Attestation Service) on Base L2
+=======
+- **Backend**: Supabase (Auth + PostgreSQL + Edge Functions + Realtime)
+- **Extension**: Chrome MV3 + Vite
+>>>>>>> 002-antarix-definitive-vision
 - **Testing**: Vitest (unit) + Playwright (e2e)
 
 ## Quick Start
@@ -58,6 +70,7 @@ See [specs/001-antarix-complete-workflow/quickstart.md](specs/001-antarix-comple
 ```
 antarix/
 ├── apps/
+<<<<<<< HEAD
 │   ├── web/               # Next.js 15 — 3 portals via subdomain routing
 │   ├── extension/          # Chrome MV3 extension
 │   ├── mobile/             # React Native + Expo (005)
@@ -124,6 +137,23 @@ Observability (Append-Only Audit) · Feature-Flagged Rollout · Migration Number
 - [Quickstart Guide](specs/001-antarix-complete-workflow/quickstart.md) — local dev setup
 - [Agent Working Context](AGENTS.md) — for opencode agents
 - [006 Rollout Runbook](docs/006-rollout-runbook.md) — deployment runbook for 006
+=======
+│   ├── web/         # Next.js 15 — 3 portals via subdomain routing
+│   └── extension/   # Chrome MV3 extension
+├── packages/
+│   ├── types/       # Shared TypeScript types
+│   └── utils/       # Shared utilities
+└── supabase/        # Database migrations + edge functions
+```
+
+## Documentation
+
+- [Feature Spec](specs/001-antarix-complete-workflow/spec.md)
+- [Implementation Plan](specs/001-antarix-complete-workflow/plan.md)
+- [Data Model](specs/001-antarix-complete-workflow/data-model.md)
+- [API Contracts](specs/001-antarix-complete-workflow/contracts/api.md)
+- [Quickstart Guide](specs/001-antarix-complete-workflow/quickstart.md)
+>>>>>>> 002-antarix-definitive-vision
 
 ## License
 

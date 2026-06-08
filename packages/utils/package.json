@@ -1,0 +1,30 @@
+{
+  "name": "@antarix/utils",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./date": "./date.ts",
+    "./format": "./format.ts",
+    "./leaderboard-tie-breakers": "./leaderboard-tie-breakers.ts",
+    "./timezone": "./timezone.ts",
+    "./whatsapp-cost-guard": "./whatsapp-cost-guard.ts",
+    "./suppress-nudge": "./suppress-nudge.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@antarix/types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.9"
+  }
+}
