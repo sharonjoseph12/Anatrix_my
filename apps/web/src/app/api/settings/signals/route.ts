@@ -141,7 +141,7 @@ export async function GET(req: Request) {
   if (bErr) return err("internal_error", bErr.message, 500);
 
   const connIds = (biometricRows ?? []).map((c) => (c as { id: string }).id);
-  let bioAggsByConn = new Map<
+  const bioAggsByConn = new Map<
     string,
     {
       period_start: string;

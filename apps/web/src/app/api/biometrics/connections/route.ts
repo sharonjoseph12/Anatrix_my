@@ -42,7 +42,7 @@ export async function GET() {
   if (cErr) return err("internal_error", cErr.message, 500);
 
   const connIds = (connections ?? []).map((c) => (c as { id: string }).id);
-  let aggByConn = new Map<string, { period_start: string; sleep_duration_minutes: number | null; sleep_quality_score: number | null; hrv_ms: number | null; resting_hr_bpm: number | null; daily_readiness_score: number | null }[]>();
+  const aggByConn = new Map<string, { period_start: string; sleep_duration_minutes: number | null; sleep_quality_score: number | null; hrv_ms: number | null; resting_hr_bpm: number | null; daily_readiness_score: number | null }[]>();
   if (connIds.length > 0) {
     const { data: aggs, error: aErr } = await supabase
       .from("biometric_aggregates")

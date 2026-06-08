@@ -9,7 +9,8 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { ZodSignals } from "@antarix/types";
-import { hashStructured, clampIDEScore } from "@antarix/utils";
+import { clampIDEScore } from "@antarix/utils";
+import { hashStructured } from "@antarix/utils/hash";
 import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import { writeSignalAudit } from "@/lib/audit/log";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";

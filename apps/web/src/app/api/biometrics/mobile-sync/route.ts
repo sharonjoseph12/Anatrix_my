@@ -9,7 +9,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createHash } from "node:crypto";
 import { ZodSignals } from "@antarix/types";
-import { hashStructured, clampBiometricScore } from "@antarix/utils";
+import { clampBiometricScore } from "@antarix/utils";
+import { hashStructured } from "@antarix/utils/hash";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { writeSignalAudit } from "@/lib/audit/log";
 

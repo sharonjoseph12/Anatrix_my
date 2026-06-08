@@ -6,3 +6,8 @@ export * from "./hackathon";
 export * from "./mock-interview";
 export * from "./public-api";
 export * from "./i18n";
+export * from "./audit";
+export * from "./biometrics";
+export * from "./ide-telemetry";
+export * from "./signals";
+export * as ZodSignals from "./zod/signals";
