@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LayoutDashboard, Lightbulb, Users, Settings, BarChart3, History, Github, Award } from "lucide-react";
+import { LayoutDashboard, Lightbulb, Users, Settings, BarChart3, History, Github, Award, BrainCircuit } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { UserMenu } from "@/components/dashboard/user-menu";
 import { SidebarLink } from "@/components/dashboard/sidebar-link";
@@ -14,6 +14,7 @@ const NAV = [
   { href: "/dashboard/insights", label: "Insights", icon: Lightbulb },
   { href: "/dashboard/peak-self", label: "Peak Self", icon: BarChart3 },
   { href: "/dashboard/cohorts", label: "Cohorts", icon: Users },
+  { href: "/talent-twin", label: "Talent Twin", icon: BrainCircuit },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
