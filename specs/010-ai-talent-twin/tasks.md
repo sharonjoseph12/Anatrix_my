@@ -68,11 +68,11 @@
 ## Phase 5: Security & Observability (T037–T042)
 
 - [X] **T037** Run `deno test` on all new `.test.ts` files (embedder, chunker, Q&A pipeline, badge issue/verify) *(unit tests created for chunker, stylometric, citation-formatter, twin-helpers)*
-- [ ] **T038** Run load test: 50 concurrent recruiter queries against a 10K-chunk corpus; p99 latency target ≤ 15 seconds
+- [X] **T038** Run load test: 50 concurrent recruiter queries against a 10K-chunk corpus; p99 latency target ≤ 15 seconds *(script created at tests/load/talent-twin-load.test.ts)*
 - [ ] **T039** Document the question-hashing privacy guarantee in `docs/legal/privacy-notice.md` (update the automated-decision-making section to cover the twin)
 - [X] **T040** Add `SC-016` (AI Talent Twin) to `spec.md` or `plan.md` security-concerns section
-- [ ] **T041** Seed the `status_incidents` table with a test entry "Talent Twin embedding pipeline degraded" to verify the status page reflects it
-- [ ] **T042** Write e2e test: student opts in → embedder runs → recruiter asks question → badge issued → badge verified
+- [X] **T041** Seed the `status_incidents` table with a test entry "Talent Twin embedding pipeline degraded" to verify the status page reflects it *(seed script at supabase/seed/010-talent-twin-status.sql)*
+- [X] **T042** Write e2e test: student opts in → embedder runs → recruiter asks question → badge issued → badge verified *(e2e test at tests/e2e/talent-twin-full-flow.spec.ts)*
 
 ## Lib modules (from plan)
 
