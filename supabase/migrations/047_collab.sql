@@ -13,6 +13,10 @@ alter table public.anticheat_signals add constraint anticheat_signals_signal_chk
     'collab_typing_divergence'
   )
 );
+alter table public.anticheat_signals drop constraint if exists anticheat_signals_entity_type_chk;
+alter table public.anticheat_signals add constraint anticheat_signals_entity_type_chk check (
+  entity_type in ('github_repo', 'dsa_record', 'collab_room')
+);
 
 create table if not exists public.collab_rooms (
   id uuid primary key default gen_random_uuid(),
@@ -155,11 +159,42 @@ alter table public.collab_consents enable row level security;
 alter table public.collab_snapshots enable row level security;
 alter table public.collab_audit enable row level security;
 
+create or replace function public.is_collab_participant(target_room_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.collab_participants
+    where room_id = target_room_id and user_id = auth.uid()
+  );
+$$;
+
+create or replace function public.is_collab_host(target_room_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.collab_rooms
+    where id = target_room_id and invited_by = auth.uid()
+  );
+$$;
+
+revoke all on function public.is_collab_participant(uuid) from public;
+revoke all on function public.is_collab_host(uuid) from public;
+grant execute on function public.is_collab_participant(uuid) to authenticated;
+grant execute on function public.is_collab_host(uuid) to authenticated;
+
 drop policy if exists collab_rooms_host_select on public.collab_rooms;
 create policy collab_rooms_host_select on public.collab_rooms for select using (invited_by = auth.uid());
 drop policy if exists collab_rooms_participant_select on public.collab_rooms;
 create policy collab_rooms_participant_select on public.collab_rooms for select using (
-  exists (select 1 from public.collab_participants cp where cp.room_id = collab_rooms.id and cp.user_id = auth.uid())
+  public.is_collab_participant(id)
 );
 drop policy if exists collab_rooms_cohort_select on public.collab_rooms;
 create policy collab_rooms_cohort_select on public.collab_rooms for select using (
@@ -171,15 +206,15 @@ drop policy if exists collab_participants_self_select on public.collab_participa
 create policy collab_participants_self_select on public.collab_participants for select using (user_id = auth.uid());
 drop policy if exists collab_participants_host_select on public.collab_participants;
 create policy collab_participants_host_select on public.collab_participants for select using (
-  exists (select 1 from public.collab_rooms cr where cr.id = collab_participants.room_id and cr.invited_by = auth.uid())
+  public.is_collab_host(room_id)
 );
 drop policy if exists collab_events_participant_select on public.collab_events;
 create policy collab_events_participant_select on public.collab_events for select using (
-  exists (select 1 from public.collab_participants cp where cp.room_id = collab_events.room_id and cp.user_id = auth.uid())
+  public.is_collab_participant(room_id)
 );
 drop policy if exists collab_artifacts_participant_select on public.collab_artifacts;
 create policy collab_artifacts_participant_select on public.collab_artifacts for select using (
-  exists (select 1 from public.collab_participants cp where cp.room_id = collab_artifacts.room_id and cp.user_id = auth.uid())
+  public.is_collab_participant(room_id)
 );
 drop policy if exists teamwork_scores_self_select on public.teamwork_scores;
 create policy teamwork_scores_self_select on public.teamwork_scores for select using (user_id = auth.uid());
@@ -198,7 +233,7 @@ drop policy if exists collab_recordings_observer_select on public.collab_recordi
 create policy collab_recordings_observer_select on public.collab_recordings for select using (observer_user_id = auth.uid());
 drop policy if exists collab_recordings_participant_meta_select on public.collab_recordings;
 create policy collab_recordings_participant_meta_select on public.collab_recordings for select using (
-  exists (select 1 from public.collab_participants cp where cp.room_id = collab_recordings.room_id and cp.user_id = auth.uid())
+  public.is_collab_participant(room_id)
 );
 drop policy if exists collab_consents_giver_select on public.collab_consents;
 create policy collab_consents_giver_select on public.collab_consents for select using (user_id = auth.uid());
@@ -206,7 +241,7 @@ drop policy if exists collab_consents_grantee_select on public.collab_consents;
 create policy collab_consents_grantee_select on public.collab_consents for select using (grantee_user_id = auth.uid());
 drop policy if exists collab_snapshots_participant_select on public.collab_snapshots;
 create policy collab_snapshots_participant_select on public.collab_snapshots for select using (
-  exists (select 1 from public.collab_participants cp where cp.room_id = collab_snapshots.room_id and cp.user_id = auth.uid())
+  public.is_collab_participant(room_id)
 );
 drop policy if exists collab_audit_admin_select on public.collab_audit;
 create policy collab_audit_admin_select on public.collab_audit for select using (

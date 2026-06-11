@@ -13,11 +13,16 @@
     "./audit": "./audit.ts",
     "./ide-telemetry": "./ide-telemetry.ts",
     "./biometrics": "./biometrics.ts",
+    "./collab": "./collab.ts",
+    "./collab-events": "./collab-events.ts",
     "./zod/signals": "./zod/signals.ts"
   },
   "scripts": {
     "lint": "eslint .",
     "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "typescript": "^5.5.0"

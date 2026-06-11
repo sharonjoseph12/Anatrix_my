@@ -126,6 +126,12 @@ Observability (Append-Only Audit) · Feature-Flagged Rollout · Migration Number
 - [Quickstart Guide](specs/001-antarix-complete-workflow/quickstart.md) — local dev setup
 - [Agent Working Context](AGENTS.md) — for opencode agents
 - [006 Rollout Runbook](docs/006-rollout-runbook.md) — deployment runbook for 006
+- [009 Operations Runbook](docs/009-runbook.md) — key rotation, gas spike, DPDP deletion response
+
+## On-Chain Mirror (009)
+
+Feature 009 adds an optional, hash-only mirror of W3C Verifiable Credentials to the Ethereum Attestation Service (EAS) on Base L2. Students opt in from their dashboard, choose between a self-custody wallet (verified via SIWE) or a platform-custodial address (derived via BIP-44), and grant versioned consent. The on-chain entry contains only a keccak256 hash of the PII-stripped credential, a pointer back to the public verification page, and a snapshot score — no personal data ever touches the chain. A 3-tier kill-switch (master → tenant → student) controls the feature flag, and the unmirror dispatcher revokes attestations on-chain when a student requests deletion (DPDP-compliant within 1 hour). A public resolver page and JSON API let recruiters verify on-chain status with links to BaseScan and EAS Scan.
+
 
 ## License
 

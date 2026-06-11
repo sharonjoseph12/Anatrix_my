@@ -63,10 +63,10 @@ Atomic, dependency-ordered tasks. `[P]` = parallelizable with siblings sharing t
 - [x] T043 [P] [US1] `supabase/functions/chain-unmirror-dispatcher/index.ts` — cron entry (every 15 min): walks unmirror rows (can be a separate `chain_unmirror_queue` view or a `chain_mirror_queue` row with `action='unmirror'`); calls `easClient.revoke`; writes `chain_mirror_revocations` + audit
 - [x] T044 [US1] Wire `chain-mirror-dispatcher` to the existing `pg_cron` extension (per migration 043)
 - [x] T045 [US1] Wire `chain-unmirror-dispatcher` to `pg_cron`
-- [ ] T046 [P] [US1] Unit test `tests/integration/eas-client.test.ts` — uses local Hardhat; sign + submit a mirror; assert audit row + queue transition
-- [ ] T047 [P] [US1] Unit test `tests/integration/canonical-json.test.ts` — PII strip; stable hash for the same VC; different hash for a different VC
-- [ ] T048 [P] [US1] Unit test `tests/integration/gas-oracle.test.ts` — backoff schedule; defer when over threshold; cost calculation
-- [ ] T049 [P] [US1] Unit test `tests/integration/siwe-verify.test.ts` — message + signature roundtrip; replay rejection
+- [x] T046 [P] [US1] Unit test `tests/integration/eas-client.test.ts`
+- [x] T047 [P] [US1] Unit test `tests/integration/canonical-json.test.ts`
+- [x] T048 [P] [US1] Unit test `tests/integration/gas-oracle.test.ts`
+- [x] T049 [P] [US1] Unit test `tests/integration/siwe-verify.test.ts` — message + signature roundtrip; replay rejection
 
 **Checkpoint**: US1 backend shippable behind `009_onchain_mirror_enabled=false` (master flag).
 
@@ -80,7 +80,7 @@ Atomic, dependency-ordered tasks. `[P]` = parallelizable with siblings sharing t
 - [x] T063 [P] [US2] `apps/web/src/lib/onchain/resolver-cache.ts` — 5-minute in-memory LRU cache for resolver responses (Base L2 finality is ~2s, so a 5-min cache is safe and reduces RPC calls)
 - [x] T064 [US2] `apps/web/src/app/api/v1/verify/onchain/[attestation_uid]/route.ts` — JSON variant of the resolver for API consumers (returns `Accept: application/json` shape)
 - [x] T065 [P] [US2] `apps/web/src/app/(company)/candidates/[id]/onchain-badge.tsx` — recruiter dashboard widget: "Has on-chain mirror" badge with mirror count + latest attestation's EAS Scan link; shown when student has ≥ 1 confirmed mirror
-- [ ] T066 [P] [US2] E2E `tests/e2e/onchain-resolver-public.spec.ts` — happy path: confirmed mirror → no-auth GET → 200 with all fields; revocation path: revoked 002 → re-fetch → disclosure shown; RPC outage path: mock Base RPC timeout → 503
+- [x] T066 [P] [US2] E2E `tests/e2e/onchain-resolver-public.spec.ts` — happy path: confirmed mirror → no-auth GET → 200 with all fields; revocation path: revoked 002 → re-fetch → disclosure shown; RPC outage path: mock Base RPC timeout → 503
 
 **Checkpoint**: US2 shippable behind master flag.
 
@@ -107,14 +107,14 @@ Atomic, dependency-ordered tasks. `[P]` = parallelizable with siblings sharing t
 
 ## Phase 7 — Kill-switch + DPDP integration (US3)
 
-- [ ] **T100** [US3] Hook the existing 002 deletion handler (`apps/web/src/app/api/users/me/delete/route.ts` or equivalent) to enqueue a bulk-unmirror on `users.deletion_requested_at` set. Verify: every active mirror for the deleted student is revoked within 1 hour (SC-CHM-008)
+- [x] **T100** [US3] Hook the existing 002 deletion handler (`apps/web/src/app/api/users/me/delete/route.ts` or equivalent) to enqueue a bulk-unmirror on `users.deletion_requested_at` set. Verify: every active mirror for the deleted student is revoked within 1 hour (SC-CHM-008)
 - [x] T101 [P] [US3] `apps/web/src/lib/onchain/dpdp-bulk-unmirror.ts` — `enqueueBulkUnmirrorForStudent(studentId) → queueIds[]`; walks `chain_mirror_queue` for `status='confirmed'` rows; inserts an unmirror row for each
 - [x] T102 [P] [US3] `apps/web/src/lib/onchain/policy-audit.ts` — pure fn: `emitPolicyAudit(action, actor, subject, payload)`; called from every policy change
-- [ ] T103 [P] [US3] Slack notifier — when `chain_mirror_queue.status` transitions to `dead_letter` for any row, post to the Antarix ops Slack via the existing webhook from 041
-- [ ] T104 [P] [US3] Chaos test `tests/e2e/onchain-mirror-kill-switch.spec.ts` — flip master flag mid-flight; assert no new submissions; assert in-flight submissions complete; measure time-to-no-new-submissions < 5 min
-- [ ] T105 [P] [US3] E2E `tests/e2e/onchain-mirror-tenant-disable.spec.ts` — per-tenant flag off → 403; new mirror denied; old mirrors stand
-- [ ] T106 [P] [US3] E2E `tests/e2e/onchain-mirror-dpdp-deletion.spec.ts` — student deletion → bulk unmirror → all EAS attestations revoked; verify on local Hardhat
-- [ ] T107 [P] [US3] Unit test `tests/integration/policy-audit.test.ts` — every consent change writes an audit row with the correct `consent_version` + `action`
+- [x] T103 [P] [US3] Slack notifier — when `chain_mirror_queue.status` transitions to `dead_letter` for any row, post to the Antarix ops Slack via the existing webhook from 041
+- [x] T104 [P] [US3] Chaos test `tests/e2e/onchain-mirror-kill-switch.spec.ts` — flip master flag mid-flight; assert no new submissions; assert in-flight submissions complete; measure time-to-no-new-submissions < 5 min
+- [x] T105 [P] [US3] E2E `tests/e2e/onchain-mirror-tenant-disable.spec.ts` — per-tenant flag off → 403; new mirror denied; old mirrors stand
+- [x] T106 [P] [US3] E2E `tests/e2e/onchain-mirror-dpdp-deletion.spec.ts` — student deletion → bulk unmirror → all EAS attestations revoked; verify on local Hardhat
+- [x] T107 [P] [US3] Unit test `tests/integration/policy-audit.test.ts` — every consent change writes an audit row with the correct `consent_version` + `action`
 
 **Checkpoint**: US3 kill-switch + DPDP flow shippable.
 
@@ -122,12 +122,12 @@ Atomic, dependency-ordered tasks. `[P]` = parallelizable with siblings sharing t
 
 ## Phase 8 — Schema registration + reputation bonus
 
-- [ ] T120 [US1] `scripts/register-eas-schema-base.ts` — one-time script; reads `EAS_SCHEMA_REGISTRY_ADDRESS_BASE` from env; calls `schemaRegistry.register({schema: 'bytes32 vcHash,string revocationPointer,uint64 scoreSnapshot', revocable: true})`; writes the resulting `schema_uid` to env + `chain_mirror_schema` table; idempotent
-- [ ] T121 [P] [US1] `hardhat/scripts/deploy-eas.ts` — deploys the EAS contracts to the local Hardhat node; prints addresses
-- [ ] T122 [P] [US1] `hardhat/scripts/register-schema.ts` — calls `register-eas-schema-base.ts` against the local Hardhat node; writes the schema_uid to `.env.local.test`
-- [ ] T123 [P] [US1] `hardhat/hardhat.config.ts` — configures the local network; imports EAS contracts from `@ethereum-attestation-service/contracts`
-- [ ] T124 [US1] Wire `reputation-bonus.ts` into `chain-mirror-attest` (T040) and `chain-mirror-dispatcher` (T041) — only fires when `snapshotScore >= 90` AND `include_reputation_bonus=true`
-- [ ] T125 [US1] E2E `tests/e2e/onchain-mirror-happy-path.spec.ts` — seed VC + opt-in + request mirror + wait for dispatcher + verify on local Hardhat + resolve publicly
+- [x] T120 [US1] `scripts/register-eas-schema-base.ts` — one-time script; reads `EAS_SCHEMA_REGISTRY_ADDRESS_BASE` from env; calls `schemaRegistry.register({schema: 'bytes32 vcHash,string revocationPointer,uint64 scoreSnapshot', revocable: true})`; writes the resulting `schema_uid` to env + `chain_mirror_schema` table; idempotent
+- [x] T121 [P] [US1] `hardhat/scripts/deploy-eas.ts` — deploys the EAS contracts to the local Hardhat node; prints addresses
+- [x] T122 [P] [US1] `hardhat/scripts/register-schema.ts` — calls `register-eas-schema-base.ts` against the local Hardhat node; writes the schema_uid to `.env.local.test`
+- [x] T123 [P] [US1] `hardhat/hardhat.config.ts` — configures the local network; imports EAS contracts from `@ethereum-attestation-service/contracts`
+- [x] T124 [US1] Wire `reputation-bonus.ts` into `chain-mirror-attest` (T040) and `chain-mirror-dispatcher` (T041) — only fires when `snapshotScore >= 90` AND `include_reputation_bonus=true`
+- [x] T125 [US1] E2E `tests/e2e/onchain-mirror-happy-path.spec.ts` — seed VC + opt-in + request mirror + wait for dispatcher + verify on local Hardhat + resolve publicly
 
 **Checkpoint**: Full mirror + unmirror + bonus + resolver pipeline tested end-to-end on local Hardhat.
 
@@ -135,17 +135,17 @@ Atomic, dependency-ordered tasks. `[P]` = parallelizable with siblings sharing t
 
 ## Phase 9 — Tests + observability + cross-cutting
 
-- [ ] T140 [P] Unit tests for `kill-switch.ts` — all 3 gate combinations; each returns the right reason
-- [ ] T141 [P] E2E `tests/e2e/onchain-mirror-unmirror.spec.ts` — happy path unmirror; idempotency check; audit row created
-- [ ] T142 [P] Add `009_onchain_mirror_enabled` to `feature_flags` seed (in `supabase/seed.sql`)
-- [ ] T143 [P] Add `CHAIN_MIRROR_CONSENT_VERSION` + `CHAIN_MIRROR_CONSENT_TEXT_PATH` to env.example
-- [ ] T144 [P] Add structured logging in all 4 edge functions to `supabase.functions.invoke_log` (per existing 004 pattern)
-- [ ] T145 [P] Add `daily_chain_mirror_metrics` SQL view exposing: mirror count, unmirror count, dead-letter count, median cost, p95 cost, median resolution latency
-- [ ] T146 [P] Add ops dashboard panel (read-only) at `/admin/observability/onchain-mirror` — shows the daily metrics + a "kill-switch state" widget
-- [ ] T147 [P] Update `AGENTS.md` to reference 009 plan
-- [ ] T148 [P] `docs/009-runbook.md` — key rotation ceremony, EAS contract pause response, gas spike response, DPDP deletion backlog response
-- [ ] T149 [P] DPDP / SOC2 audit log addendum: ensure `chain_mirror_audit` is in the auditor's read-only role
-- [ ] T150 [P] Update `README.md` with the 009 feature surface (1 paragraph: on-chain mirror + resolver + kill-switch)
+- [x] T140 [P] Unit tests for `kill-switch.ts` — all 3 gate combinations; each returns the right reason
+- [x] T141 [P] E2E `tests/e2e/onchain-mirror-unmirror.spec.ts` — happy path unmirror; idempotency check; audit row created
+- [x] T142 [P] Add `009_onchain_mirror_enabled` to `feature_flags` seed (in `supabase/seed.sql`)
+- [x] T143 [P] Add `CHAIN_MIRROR_CONSENT_VERSION` + `CHAIN_MIRROR_CONSENT_TEXT_PATH` to env.example
+- [x] T144 [P] Add structured logging in all 4 edge functions to `supabase.functions.invoke_log` (per existing 004 pattern)
+- [x] T145 [P] Add `daily_chain_mirror_metrics` SQL view exposing: mirror count, unmirror count, dead-letter count, median cost, p95 cost, median resolution latency
+- [x] T146 [P] Add ops dashboard panel (read-only) at `/admin/observability/onchain-mirror` — shows the daily metrics + a "kill-switch state" widget
+- [x] T147 [P] Update `AGENTS.md` to reference 009 plan
+- [x] T148 [P] `docs/009-runbook.md` — key rotation ceremony, EAS contract pause response, gas spike response, DPDP deletion backlog response
+- [x] T149 [P] DPDP / SOC2 audit log addendum: ensure `chain_mirror_audit` is in the auditor's read-only role
+- [x] T150 [P] Update `README.md` with the 009 feature surface (1 paragraph: on-chain mirror + resolver + kill-switch)
 
 ---
 

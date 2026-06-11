@@ -55,19 +55,19 @@ Atomic, dependency-ordered tasks. `[P]` = parallelizable with siblings sharing t
 
 ### 3b. Edge functions (depend on 3a + Phase 1)
 
-- [-] **T040 `supabase/functions/github-anticheat/index.ts`** — accepts `{ student_id }`, walks repos, calls signal fns, writes `anticheat_signals` rows, quarantines repos with `score ≥ threshold`, writes audit row
-- [~] **T041 `supabase/functions/dsa-anticheat/index.ts`** — analogous for DSA profile
+- [x] **T040 `supabase/functions/github-anticheat/index.ts`** — accepts `{ student_id }`, walks repos, calls signal fns, writes `anticheat_signals` rows, quarantines repos with `score ≥ threshold`, writes audit row
+- [x] **T041 `supabase/functions/dsa-anticheat/index.ts`** — analogous for DSA profile
 
 ### 3c. API routes + UI (depend on 3a)
 
-- [ ] T042 [P] `apps/web/src/app/api/anticheat/appeal/route.ts` — POST, validates body, inserts `anticheat_appeals`, returns appeal_id
-- [~] T043 [P] `apps/web/src/app/api/anticheat/decide/route.ts` — POST, mentor-auth, updates appeal + writes audit, triggers recompute on approval
-- [~] T044 [P] `apps/web/src/app/(student)/dashboard/skills/anticheat-banner.tsx` — shows quarantined repos + appeal CTA
-- [~] T045 [P] `apps/web/src/app/(college)/faculty/appeals/page.tsx` — mentor review queue
+- [x] T042 [P] `apps/web/src/app/api/anticheat/appeal/route.ts` — POST, validates body, inserts `anticheat_appeals`, returns appeal_id
+- [x] T043 [P] `apps/web/src/app/api/anticheat/decide/route.ts` — POST, mentor-auth, updates appeal + writes audit, triggers recompute on approval
+- [x] T044 [P] `apps/web/src/app/(student)/dashboard/skills/anticheat-banner.tsx` — shows quarantined repos + appeal CTA
+- [ ] T045 [P] `apps/web/src/app/(college)/faculty/appeals/page.tsx` — mentor review queue
 
 ### 3d. Cron + E2E
 
-- [~] T046 Cron entry in `029_cron_002.sql` extension (`038_cron_004.sql`): run `github-anticheat` per-student weekly
+- [-] T046 Cron entry in `029_cron_002.sql` extension (`038_cron_004.sql`): run `github-anticheat` per-student weekly
 - [~] T047 E2E `tests/e2e/anticheat-fork-no-commits.spec.ts` — seed 14 forks, run function, assert quarantine + UI
 
 **Checkpoint**: P1 trust feature shippable behind `004_anticheat` flag.
@@ -250,7 +250,7 @@ Atomic, dependency-ordered tasks. `[P]` = parallelizable with siblings sharing t
 - [~] T272 [P] Update `README.md` with the new feature surfaces (1 paragraph per phase)
 - [~] T273 [P] `docs/004-rollout-runbook.md` — operator runbook for staged rollout
 - [~] T274 [P] DPDP / SOC2 audit log addendum: ensure all new tables have admin-readable audit trails
-- [~] T275 Migration `038_cron_004.sql` — consolidates all 004 cron jobs
+- [x] T275 Migration `038_cron_004.sql` — consolidates all 004 cron jobs
 
 ---
 

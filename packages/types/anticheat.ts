@@ -6,9 +6,10 @@ export type AnticheatSignalKind =
   | "ai_generated_suspect"
   | "copied_content_overlap"
   | "impossible_velocity"
-  | "rating_delta_anomaly";
+  | "rating_delta_anomaly"
+  | "collab_typing_divergence";
 
-export type AnticheatEntityType = "github_repo" | "dsa_record";
+export type AnticheatEntityType = "github_repo" | "dsa_record" | "collab_room";
 
 export type AnticheatAppealStatus =
   | "pending"

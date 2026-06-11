@@ -12,4 +12,6 @@ export * from "./ide-telemetry";
 export * from "./signals";
 export * from "./onchain-mirror";
 export * from "./eas";
+export * from "./collab";
+export * from "./collab-events";
 export * as ZodSignals from "./zod/signals";

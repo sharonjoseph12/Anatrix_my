@@ -63,6 +63,7 @@ export interface User {
   onboarding_completed_at: string | null;
   avatar_url: string | null;
   role: PlatformRole;
+  collab_opt_out: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -338,6 +339,104 @@ export interface JobMatch {
   updated_at: string;
 }
 
+export interface CollabRoomRow {
+  id: string;
+  kind: "self_practice" | "paired_with_mentor" | "team";
+  cohort_id: string | null;
+  invited_by: string;
+  scheduled_start: string;
+  duration_minutes: number;
+  language: "javascript" | "typescript" | "python" | "go" | "rust" | "other";
+  sandbox_kind: "webcontainer" | "firecracker";
+  status: "scheduled" | "live" | "ended" | "cancelled";
+  consent_required: boolean;
+  ends_at: string | null;
+  created_at: string;
+}
+
+export interface CollabParticipantRow {
+  id: string;
+  room_id: string;
+  user_id: string;
+  role: "host" | "participant" | "observer" | "recruiter_observer";
+  joined_at: string;
+  left_at: string | null;
+  left_reason: "ended" | "left" | "kicked" | "network_lost" | "account_deleted" | null;
+  opt_out_teamwork: boolean;
+  consent_id: string | null;
+}
+
+export interface CollabEventRow {
+  id: number;
+  room_id: string;
+  user_id: string;
+  event_type: string;
+  payload_json: Json;
+  seq: number;
+  created_at: string;
+}
+
+export interface CollabArtifactRow {
+  id: string;
+  room_id: string;
+  code_snapshot_url: string;
+  transcript_url: string | null;
+  events_url: string;
+  language: string;
+  duration_seconds: number;
+  ended_at: string;
+}
+
+export interface TeamworkScoreRow {
+  id: string;
+  room_id: string;
+  user_id: string | null;
+  score: number;
+  sub_scores_json: Json;
+  breakdown_json: Json;
+  computed_at: string;
+}
+
+export interface CollabRecordingRow {
+  id: string;
+  room_id: string;
+  observer_user_id: string;
+  recording_url: string | null;
+  started_at: string;
+  ended_at: string | null;
+  redacted: boolean;
+  purge_after: string;
+}
+
+export interface CollabConsentRow {
+  id: string;
+  room_id: string;
+  user_id: string;
+  grantee_user_id: string;
+  scopes: string[];
+  granted_at: string;
+  revoked_at: string | null;
+  expires_at: string | null;
+}
+
+export interface CollabSnapshotRow {
+  id: string;
+  room_id: string;
+  seq_at_snapshot: number;
+  snapshot_url: string;
+  created_at: string;
+}
+
+export interface CollabAuditRow {
+  id: number;
+  actor_id: string | null;
+  actor_type: "system" | "student" | "mentor" | "recruiter" | "faculty" | "admin";
+  action: string;
+  subject_room_id: string;
+  payload_json: Json;
+  created_at: string;
+}
+
 type EmptyRelationships = [];
 
 type TableShape<Row, Insert, Update = Partial<Insert>> = {
@@ -366,6 +465,7 @@ export type Database = {
         onboarding_completed_at?: string | null;
         avatar_url?: string | null;
         role?: PlatformRole;
+        collab_opt_out?: boolean;
         created_at?: string;
         updated_at?: string;
       }>;
@@ -622,6 +722,95 @@ export type Database = {
         hired_at?: string | null;
         created_at?: string;
         updated_at?: string;
+      }>;
+      collab_rooms: TableShape<CollabRoomRow, {
+        id?: string;
+        kind: CollabRoomRow["kind"];
+        cohort_id?: string | null;
+        invited_by: string;
+        scheduled_start: string;
+        duration_minutes?: number;
+        language: CollabRoomRow["language"];
+        sandbox_kind: CollabRoomRow["sandbox_kind"];
+        status?: CollabRoomRow["status"];
+        consent_required?: boolean;
+        ends_at?: string | null;
+        created_at?: string;
+      }>;
+      collab_participants: TableShape<CollabParticipantRow, {
+        id?: string;
+        room_id: string;
+        user_id: string;
+        role: CollabParticipantRow["role"];
+        joined_at?: string;
+        left_at?: string | null;
+        left_reason?: CollabParticipantRow["left_reason"];
+        opt_out_teamwork?: boolean;
+        consent_id?: string | null;
+      }>;
+      collab_events: TableShape<CollabEventRow, {
+        id?: number;
+        room_id: string;
+        user_id: string;
+        event_type: string;
+        payload_json?: Json;
+        seq: number;
+        created_at?: string;
+      }>;
+      collab_artifacts: TableShape<CollabArtifactRow, {
+        id?: string;
+        room_id: string;
+        code_snapshot_url: string;
+        transcript_url?: string | null;
+        events_url: string;
+        language: string;
+        duration_seconds: number;
+        ended_at?: string;
+      }>;
+      teamwork_scores: TableShape<TeamworkScoreRow, {
+        id?: string;
+        room_id: string;
+        user_id?: string | null;
+        score: number;
+        sub_scores_json: Json;
+        breakdown_json: Json;
+        computed_at?: string;
+      }>;
+      collab_recordings: TableShape<CollabRecordingRow, {
+        id?: string;
+        room_id: string;
+        observer_user_id: string;
+        recording_url?: string | null;
+        started_at?: string;
+        ended_at?: string | null;
+        redacted?: boolean;
+        purge_after: string;
+      }>;
+      collab_consents: TableShape<CollabConsentRow, {
+        id?: string;
+        room_id: string;
+        user_id: string;
+        grantee_user_id: string;
+        scopes: string[];
+        granted_at?: string;
+        revoked_at?: string | null;
+        expires_at?: string | null;
+      }>;
+      collab_snapshots: TableShape<CollabSnapshotRow, {
+        id?: string;
+        room_id: string;
+        seq_at_snapshot: number;
+        snapshot_url: string;
+        created_at?: string;
+      }>;
+      collab_audit: TableShape<CollabAuditRow, {
+        id?: number;
+        actor_id?: string | null;
+        actor_type: CollabAuditRow["actor_type"];
+        action: string;
+        subject_room_id: string;
+        payload_json?: Json;
+        created_at?: string;
       }>;
     };
     Views: { [_ in never]: never };
