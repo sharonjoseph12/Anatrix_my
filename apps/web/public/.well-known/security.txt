@@ -1,0 +1,15 @@
+# Antarix security.txt — RFC 9116
+# Generated 2026-06-06
+# Canonical home: https://antarix.app/.well-known/security.txt
+# Policy:         https://antarix.app/docs/security/vdp
+# Source of truth (this file): apps/web/public/.well-known/security.txt in the Antarix monorepo.
+# Field order follows RFC 9116 §2.5 recommendations; field names are case-insensitive per §2.4.
+
+Contact: mailto:security@antarix.app
+Contact: https://antarix.app/.well-known/security-contact-form (TBD)
+Expires: 2027-06-06T00:00:00.000Z
+Preferred-Languages: en, hi
+Canonical: https://antarix.app/.well-known/security.txt
+Policy: https://antarix.app/docs/security/vdp
+Acknowledgments: https://antarix.app/docs/security/hall-of-fame (TBD)
+Hiring: https://antarix.app/careers

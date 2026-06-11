@@ -1,0 +1,24 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/suites/eddsa-2022/v1"
+  ],
+  "id": "did:web:antarix.app",
+  "verificationMethod": [
+    {
+      "id": "did:web:antarix.app#key-2026-01",
+      "type": "Ed25519VerificationKey2020",
+      "controller": "did:web:antarix.app",
+      "publicKeyMultibase": "z6MkTBD_REPLACE_WITH_PUBLIC_KEY_FROM_vc_issuer_keys.public_key_FOR_KID_key-2026-01"
+    }
+  ],
+  "authentication": ["did:web:antarix.app#key-2026-01"],
+  "assertionMethod": ["did:web:antarix.app#key-2026-01"],
+  "service": [
+    {
+      "id": "did:web:antarix.app#credential-resolver",
+      "type": "LinkedVerifiablePresentation",
+      "serviceEndpoint": "https://antarix.app/functions/v1/credential-vc-resolve"
+    }
+  ]
+}
