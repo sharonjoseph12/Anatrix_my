@@ -10,4 +10,6 @@ export * from "./audit";
 export * from "./biometrics";
 export * from "./ide-telemetry";
 export * from "./signals";
+export * from "./onchain-mirror";
+export * from "./eas";
 export * as ZodSignals from "./zod/signals";

@@ -30,6 +30,14 @@ export interface AtsSavedSearch {
   created_at: string;
 }
 
+export interface AtsSavedSearchQuery {
+  skills?: string[];
+  locations?: string[];
+  batch_years?: number[];
+  min_hours_logged?: number;
+  specializations?: string[];
+}
+
 export interface AtsSyncLog {
   id: number; // bigserial
   connection_id: string;
@@ -39,4 +47,17 @@ export interface AtsSyncLog {
   attempt: number;
   error: string | null;
   pushed_at: string;
+}
+
+export interface PushCandidatePayload {
+  student_id: string;
+  display_name: string;
+  email: string;
+  skill_proof_score: number;
+  primary_specialization?: string;
+  specialization_scores: Record<string, number>;
+  total_hours_logged: number;
+  institution_name?: string;
+  batch_year?: number;
+  profile_url: string;
 }

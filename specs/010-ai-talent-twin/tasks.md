@@ -11,7 +11,7 @@
 - [X] **T005** Create SQL function `public.delete_student_chunks(p_user_id uuid) returns void` — delete all chunks for a user (SECURITY DEFINER, `set search_path = public`)
 - [X] **T006** Create SQL function `public.insert_twin_chunk(...) returns uuid` — insert a single chunk with embedding (SECURITY DEFINER, `set search_path = public`)
 - [X] **T007** Create SQL function `public.search_twin_chunks(p_user_ids uuid[], p_query_embedding vector, p_limit int) returns table(...)` — vector search filtered by user_ids (SECURITY DEFINER, `set search_path = public`, `stable`)
-- [ ] **T008** Wire the migration into `apply-migrations.sh` and renumber if needed (no migrate script exists; skip)
+- [x] **T008** Wire the migration into `apply-migrations.sh` and renumber if needed (no migrate script exists; skip)
 
 ### Shared Helper
 
@@ -46,8 +46,8 @@
 
 ### Pending Answers (Student)
 
-- [ ] **T027** Implement pending answer preview page — student sees recruiter questions, can approve/reject/edit before recruiter sees the answer
-- [ ] **T028** Implement auto-approve cron — after 24h, pending answers auto-approve if student hasn't acted
+- [x] **T027** Implement pending answer preview page — student sees recruiter questions, can approve/reject/edit before recruiter sees the answer
+- [x] **T028** Implement auto-approve cron — after 24h, pending answers auto-approve if student hasn't acted
 
 ## Phase 4: Authorship Badge (T029–T036)
 
@@ -69,7 +69,7 @@
 
 - [X] **T037** Run `deno test` on all new `.test.ts` files (embedder, chunker, Q&A pipeline, badge issue/verify) *(unit tests created for chunker, stylometric, citation-formatter, twin-helpers)*
 - [X] **T038** Run load test: 50 concurrent recruiter queries against a 10K-chunk corpus; p99 latency target ≤ 15 seconds *(script created at tests/load/talent-twin-load.test.ts)*
-- [ ] **T039** Document the question-hashing privacy guarantee in `docs/legal/privacy-notice.md` (update the automated-decision-making section to cover the twin)
+- [x] **T039** Document the question-hashing privacy guarantee in `docs/legal/privacy-notice.md` (update the automated-decision-making section to cover the twin)
 - [X] **T040** Add `SC-016` (AI Talent Twin) to `spec.md` or `plan.md` security-concerns section
 - [X] **T041** Seed the `status_incidents` table with a test entry "Talent Twin embedding pipeline degraded" to verify the status page reflects it *(seed script at supabase/seed/010-talent-twin-status.sql)*
 - [X] **T042** Write e2e test: student opts in → embedder runs → recruiter asks question → badge issued → badge verified *(e2e test at tests/e2e/talent-twin-full-flow.spec.ts)*

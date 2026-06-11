@@ -15,18 +15,18 @@ Atomic, dependency-ordered tasks. `[P]` = parallelizable with siblings sharing t
 - [x] T001 [P] Verify 001-007 task completion (live ledger has 001-007; 004 has 141 tasks, 007 has its own set)
 - [x] T002 [P] Survey existing migrations (001-042 present); confirm brief's stated number 041 collides with `047_webhooks.sql`; fallback is 043
 - [x] T003 [P] Survey existing edge functions; confirm `collab-*` and `teamwork-*` names don't clash
-- [ ] T004 [P] Add 008 env vars to `.env.local.example` (per quickstart §1)
-- [ ] T005 [P] Add 008 env vars to `turbo.json` `globalEnv` array
-- [ ] T006 Add new dependencies to `apps/web/package.json`: `@liveblocks/client`, `@liveblocks/yjs`, `@liveblocks/node`, `yjs`, `y-monaco`, `@monaco-editor/react`, `@livekit/components-react`, `livekit-client`, `livekit-server-sdk`, `@webcontainer/api`, `xterm`
-- [ ] T007 Add `flyctl` deploy script + CI workflow for `apps/sandbox-firecracker/`
+- [x] T004 [P] Add 008 env vars to `.env.local.example` (per quickstart §1)
+- [x] T005 [P] Add 008 env vars to `turbo.json` `globalEnv` array
+- [x] T006 Add new dependencies to `apps/web/package.json`: `@liveblocks/client`, `@liveblocks/yjs`, `@liveblocks/node`, `yjs`, `y-monaco`, `@monaco-editor/react`, `@livekit/components-react`, `livekit-client`, `livekit-server-sdk`, `@webcontainer/api`, `xterm`
+- [x] T007 Add `flyctl` deploy script + CI workflow for `apps/sandbox-firecracker/`
 - [ ] T008 [P] Provision Liveblocks + LiveKit accounts (per quickstart §4-5); store keys in 1Password; mark secret-rotation cadence
-- [ ] T009 [P] Create `apps/sandbox-firecracker/` standalone Node + WS service skeleton (Dockerfile + fly.toml placeholder)
+- [x] T009 [P] Create `apps/sandbox-firecracker/` standalone Node + WS service skeleton (Dockerfile + fly.toml placeholder)
 
 ---
 
 ## Phase 1 — Migration 041 (single, all parallel after env)
 
-- [ ] **T010 [P] Migration `047_collab.sql`** — 9 tables (`collab_rooms`, `collab_participants`, `collab_events`, `collab_artifacts`, `teamwork_scores`, `collab_recordings`, `collab_consents`, `collab_snapshots`, `collab_audit`); column additions: `users.collab_opt_out`, `anticheat_signals.signal` enum extension; indexes + RLS policies per data-model.md
+- [x] **T010 [P] Migration `047_collab.sql`** — 9 tables (`collab_rooms`, `collab_participants`, `collab_events`, `collab_artifacts`, `teamwork_scores`, `collab_recordings`, `collab_consents`, `collab_snapshots`, `collab_audit`); column additions: `users.collab_opt_out`, `anticheat_signals.signal` enum extension; indexes + RLS policies per data-model.md
 - [ ] T011 [P] `044_pg_partman_collab.sql` — monthly partitioning on `collab_events` (inherited `pg_partman` pattern from 004)
 - [ ] T012 [P] Seed `008_collab_*` feature flags in `supabase/seed.sql` (per quickstart §10)
 - [ ] T013 [P] Seed `collab_consent_default_retention_days=90` and `collab_teamwork_score_weights` into `app_settings`
