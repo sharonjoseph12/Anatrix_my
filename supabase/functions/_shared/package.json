@@ -11,7 +11,8 @@
     "./peak-window": "./peak-window.ts",
     "./score-weights": "./score-weights.ts",
     "./suppress-nudge": "./suppress-nudge.ts",
-    "./placement-scorer": "./placement-scorer.ts"
+    "./placement-scorer": "./placement-scorer.ts",
+    "./twin-helpers": "./twin-helpers.ts"
   },
   "dependencies": {
     "handlebars": "^4.7.8"

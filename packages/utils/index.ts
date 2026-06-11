@@ -5,3 +5,4 @@ export * from "./timezone";
 export * from "./whatsapp-cost-guard";
 export * from "./suppress-nudge";
 export * from "./locale";
+export * from "./score-cap";

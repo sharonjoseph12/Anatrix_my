@@ -8,7 +8,12 @@
   "exports": {
     ".": "./index.ts",
     "./database": "./database.ts",
-    "./api": "./api.ts"
+    "./api": "./api.ts",
+    "./signals": "./signals.ts",
+    "./audit": "./audit.ts",
+    "./ide-telemetry": "./ide-telemetry.ts",
+    "./biometrics": "./biometrics.ts",
+    "./zod/signals": "./zod/signals.ts"
   },
   "scripts": {
     "lint": "eslint .",
