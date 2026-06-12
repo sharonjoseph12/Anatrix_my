@@ -1,4 +1,4 @@
-import { createClient as createBrowserClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 
 // Browser-safe Supabase client. No server-only imports here.
 // This file can be imported by both Server and Client Components.

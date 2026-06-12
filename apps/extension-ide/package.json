@@ -1,0 +1,58 @@
+{
+  "name": "extension-ide",
+  "version": "0.1.0",
+  "publisher": "antarix",
+  "displayName": "Antarix Skill Proof — IDE Telemetry",
+  "description": "Antarix Deep Signal Capture extension for VS Code",
+  "main": "./dist/extension.js",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "antarix.enable",
+        "title": "Antarix: Enable Telemetry"
+      },
+      {
+        "command": "antarix.disable",
+        "title": "Antarix: Disable Telemetry"
+      },
+      {
+        "command": "antarix.flushBuffer",
+        "title": "Antarix: Flush Telemetry Buffer"
+      },
+      {
+        "command": "antarix.revokeDevice",
+        "title": "Antarix: Revoke Device"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run build",
+    "build": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package --no-dependencies",
+    "package:cursor": "TARGET=cursor ./scripts/build-cursor.sh",
+    "lint": "eslint src --ext ts",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "uuid": "^14.0.0",
+    "web-tree-sitter": "^0.20.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.22.0",
+    "tree-sitter-go": "^0.20.0",
+    "tree-sitter-javascript": "^0.20.1",
+    "tree-sitter-python": "^0.20.4",
+    "tree-sitter-typescript": "^0.20.5",
+    "typescript": "^5.5.0",
+    "vitest": "^1.0.0"
+  }
+}

@@ -16,6 +16,10 @@ export function canonicalize(value: unknown): string {
     return JSON.stringify(value);
   }
   if (typeof value === 'string') return JSON.stringify(value);
+  return canonicalizeComplex(value);
+}
+
+function canonicalizeComplex(value: unknown): string {
   if (Array.isArray(value)) {
     return '[' + value.map((item) => canonicalize(item)).join(',') + ']';
   }
@@ -44,11 +48,14 @@ export interface StrippedVC {
 export function stripVCForHash(vc: Record<string, unknown>): StrippedVC {
   const subject = (vc.credentialSubject ?? vc) as Record<string, unknown>;
   return {
-    credentialType: String(
-      Array.isArray(vc.type) ? vc.type[vc.type.length - 1] : vc.type ?? 'UnknownCredential',
-    ),
+    credentialType: String(extractType(vc.type)),
     snapshotOverallScore: Number(subject.snapshotOverallScore ?? subject.overallScore ?? 0),
     snapshotPerSkill: (subject.snapshotPerSkill ?? subject.perSkill ?? {}) as Record<string, number>,
     snapshotTakenAt: String(subject.snapshotTakenAt ?? subject.issuanceDate ?? new Date().toISOString()),
   };
+}
+
+function extractType(typeVal: unknown) {
+  if (Array.isArray(typeVal)) return typeVal[typeVal.length - 1];
+  return typeVal ?? 'UnknownCredential';
 }

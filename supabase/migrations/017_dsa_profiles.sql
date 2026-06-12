@@ -73,8 +73,7 @@ create table if not exists public.slug_redirects (
 );
 
 create index if not exists idx_slug_redirects_active
-  on public.slug_redirects (old_slug)
-  where expires_at > now();
+  on public.slug_redirects (old_slug);
 
 alter table public.slug_redirects enable row level security;
 
@@ -101,6 +100,9 @@ begin
   return new;
 end;
 $$;
+
+-- Add slug column to candidate_profiles if it doesn't exist
+alter table public.candidate_profiles add column if not exists slug text unique;
 
 drop trigger if exists trg_candidate_profiles_slug_change on public.candidate_profiles;
 create trigger trg_candidate_profiles_slug_change

@@ -3,7 +3,7 @@
 // Coverage: sha256Hex determinism, different inputs produce different hashes
 
 import { describe, it, expect } from "vitest";
-import { sha256Hex } from "@antarix/utils/hash";
+import { sha256Hex } from "@antarix/utils/sha256";
 
 const SALT = "yearly-salt-2026";
 const ACTOR_ID = "550e8400-e29b-41d4-a716-446655440000";

@@ -54,30 +54,30 @@ end $$;
 comment on column public.users.locale is
   'BCP-47-ish 2-letter locale for the user; drives i18n rendering. One of en/hi/ta/te/mr.';
 
-alter table public.github_repos
+alter table public.github_accounts
   add column if not exists anticheat_score  numeric(3,2);
 
-alter table public.github_repos
+alter table public.github_accounts
   add column if not exists quarantined_at   timestamptz;
 
--- github_repos.anticheat_score must be in [0, 1].
+-- github_accounts.anticheat_score must be in [0, 1].
 do $$
 begin
   if not exists (
     select 1 from pg_constraint
-     where conname = 'github_repos_anticheat_score_chk'
+     where conname = 'github_accounts_anticheat_score_chk'
   ) then
-    alter table public.github_repos
-      add constraint github_repos_anticheat_score_chk
+    alter table public.github_accounts
+      add constraint github_accounts_anticheat_score_chk
       check (anticheat_score is null
              or (anticheat_score >= 0 and anticheat_score <= 1));
   end if;
 end $$;
 
-comment on column public.github_repos.anticheat_score is
+comment on column public.github_accounts.anticheat_score is
   'Aggregate anticheat suspicion score in [0, 1]. NULL = never scored.';
-comment on column public.github_repos.quarantined_at is
-  'Timestamp at which the repo was quarantined due to anticheat signals. NULL = active.';
+comment on column public.github_accounts.quarantined_at is
+  'Timestamp at which the account was quarantined due to anticheat signals. NULL = active.';
 
 alter table public.user_dsa_profiles
   add column if not exists anticheat_score  numeric(3,2);

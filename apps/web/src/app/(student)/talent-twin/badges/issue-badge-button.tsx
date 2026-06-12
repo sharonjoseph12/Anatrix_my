@@ -128,7 +128,7 @@ export function IssueBadgeButton({ commits }: { commits: CommitItem[] }) {
           >
             <Checkbox
               checked={selected.has(c.sha)}
-              onCheckedChange={() => toggle(c.sha)}
+              onChange={() => toggle(c.sha)}
             />
             <div className="flex-1 min-w-0">
               <p className="text-sm truncate font-medium">{c.message}</p>

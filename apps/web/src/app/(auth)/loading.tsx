@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AuthLoading() {
@@ -16,16 +15,3 @@ export default function AuthLoading() {
   );
 }
 
-export function AuthSkeleton() {
-  return (
-    <div className="space-y-3">
-      <Skeleton className="h-4 w-24" />
-      <Skeleton className="h-10" />
-      <Skeleton className="h-4 w-24" />
-      <Skeleton className="h-10" />
-      <Skeleton className="h-10" />
-    </div>
-  );
-}
-
-export { Button };

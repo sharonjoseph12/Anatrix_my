@@ -61,4 +61,18 @@ describe('canonical-json', () => {
     const vc2 = { type: 'B', credentialSubject: { snapshotOverallScore: 90 } };
     expect(canonicalize(stripVCForHash(vc1))).not.toBe(canonicalize(stripVCForHash(vc2)));
   });
+  it('should handle booleans', () => {
+    expect(canonicalize(true)).toBe('true');
+    expect(canonicalize(false)).toBe('false');
+  });
+
+  it('should throw on non-finite numbers', () => {
+    expect(() => canonicalize(NaN)).toThrow('Non-finite numbers not allowed');
+    expect(() => canonicalize(Infinity)).toThrow('Non-finite numbers not allowed');
+  });
+
+  it('should throw on unsupported types', () => {
+    expect(() => canonicalize(() => {})).toThrow('Unsupported type: function');
+    expect(() => canonicalize(Symbol('test'))).toThrow('Unsupported type: symbol');
+  });
 });

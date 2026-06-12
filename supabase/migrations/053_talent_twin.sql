@@ -44,7 +44,38 @@ create policy "students can delete own chunks"
 -- privacy design -- chunks are never returned directly to any user.
 
 -- =============================================================================
--- 2. talent_twin_qa_log
+-- 2. recruiter_chat_session
+-- =============================================================================
+-- Tracks chat session boundaries for UI pagination and abuse detection.
+
+create table if not exists public.recruiter_chat_session (
+  id                uuid        primary key default gen_random_uuid(),
+  recruiter_id      uuid        not null references public.users(id),
+  student_id        uuid        not null references public.users(id),
+  started_at        timestamptz not null default now(),
+  last_activity_at  timestamptz not null default now(),
+  question_count    int         not null default 0 check (question_count >= 0),
+  ended_at          timestamptz
+);
+
+create index if not exists idx_chat_session_recruiter_student
+  on public.recruiter_chat_session using btree (recruiter_id, student_id, started_at desc);
+
+create index if not exists idx_chat_session_last_activity
+  on public.recruiter_chat_session using btree (last_activity_at);
+
+alter table public.recruiter_chat_session enable row level security;
+
+create policy "recruiters see own sessions"
+  on public.recruiter_chat_session for select
+  using (auth.uid() = recruiter_id);
+
+create policy "students see sessions where they are subject"
+  on public.recruiter_chat_session for select
+  using (auth.uid() = student_id);
+
+-- =============================================================================
+-- 3. talent_twin_qa_log
 -- =============================================================================
 -- Append-only audit log for every recruiter Q&A interaction. Only
 -- hashes are stored -- never raw question/answer text.
@@ -82,7 +113,7 @@ create policy "recruiters see own approved qa log"
   using (auth.uid() = recruiter_id and status = 'approved');
 
 -- =============================================================================
--- 3. answer_preview
+-- 4. answer_preview
 -- =============================================================================
 -- Ephemeral table holding pending answers for student preview.
 -- Auto-purged on approve/reject. Raw question text stored
@@ -119,37 +150,6 @@ create policy "students see own pending answers"
 create policy "recruiters see approved answers for opted-in students"
   on public.answer_preview for select
   using (auth.uid() = recruiter_id and status = 'approved');
-
--- =============================================================================
--- 4. recruiter_chat_session
--- =============================================================================
--- Tracks chat session boundaries for UI pagination and abuse detection.
-
-create table if not exists public.recruiter_chat_session (
-  id                uuid        primary key default gen_random_uuid(),
-  recruiter_id      uuid        not null references public.users(id),
-  student_id        uuid        not null references public.users(id),
-  started_at        timestamptz not null default now(),
-  last_activity_at  timestamptz not null default now(),
-  question_count    int         not null default 0 check (question_count >= 0),
-  ended_at          timestamptz
-);
-
-create index if not exists idx_chat_session_recruiter_student
-  on public.recruiter_chat_session using btree (recruiter_id, student_id, started_at desc);
-
-create index if not exists idx_chat_session_last_activity
-  on public.recruiter_chat_session using btree (last_activity_at);
-
-alter table public.recruiter_chat_session enable row level security;
-
-create policy "recruiters see own sessions"
-  on public.recruiter_chat_session for select
-  using (auth.uid() = recruiter_id);
-
-create policy "students see sessions where they are subject"
-  on public.recruiter_chat_session for select
-  using (auth.uid() = student_id);
 
 -- =============================================================================
 -- 5. badge_revocations
@@ -252,39 +252,7 @@ create index if not exists idx_users_twin_opt_in
   on public.users using btree (talent_twin_opt_in)
   where talent_twin_opt_in = true;
 
--- =============================================================================
--- 9. GIN indexes on existing source tables
--- =============================================================================
--- Enable fast per-student + per-source-type filtering during chunking.
-
-do $$
-begin
-  if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'github_commits') then
-    create index if not exists idx_github_commits_student_source on public.github_commits using gin (student_id, source_type);
-  end if;
-  if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'pull_requests') then
-    create index if not exists idx_pull_requests_student_source on public.pull_requests using gin (student_id, source_type);
-  end if;
-  if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'dsa_coach_chat_logs') then
-    create index if not exists idx_dsa_chat_student_source on public.dsa_coach_chat_logs using gin (student_id, source_type);
-  end if;
-  if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'mock_interview_transcripts') then
-    create index if not exists idx_mock_interview_student_source on public.mock_interview_transcripts using gin (student_id, source_type);
-  end if;
-  if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'faculty_grade_comments') then
-    create index if not exists idx_faculty_grade_comments_student_source on public.faculty_grade_comments using gin (student_id, source_type);
-  end if;
-  if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'ide_sessions') then
-    create index if not exists idx_ide_sessions_student_source on public.ide_sessions using gin (student_id, source_type);
-  end if;
-  if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'lesson_feedback') then
-    create index if not exists idx_lesson_feedback_student_source on public.lesson_feedback using gin (student_id, source_type);
-  end if;
-  if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'collab_artifacts') then
-    create index if not exists idx_collab_artifacts_student_source on public.collab_artifacts using gin (student_id, source_type);
-  end if;
-end;
-$$ language plpgsql;
+-- Removed section 9 (GIN indexes) as tables and columns do not match expected schema yet
 
 -- =============================================================================
 -- 10. SQL functions
@@ -305,10 +273,10 @@ create or replace function public.insert_twin_chunk(
   p_user_id uuid,
   p_chunk_type text,
   p_source_id text,
-  p_source_url text default null,
-  p_title text default null,
   p_content text,
   p_embedding vector(384),
+  p_source_url text default null,
+  p_title text default null,
   p_metadata jsonb default '{}'::jsonb
 )
 returns uuid

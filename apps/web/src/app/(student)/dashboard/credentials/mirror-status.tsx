@@ -36,7 +36,7 @@ export default function MirrorStatus({ credentialId }: MirrorStatusProps) {
     fetchStatus();
   }, [credentialId]);
 
-  const style = STATUS_STYLES[status] ?? STATUS_STYLES.not_mirrored;
+  const style = STATUS_STYLES[status] ?? STATUS_STYLES.not_mirrored!;
 
   return (
     <div className="flex items-center gap-2">

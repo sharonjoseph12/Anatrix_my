@@ -1,23 +1,14 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
 
-// Leaderboard for a single hackathon. Ranks submissions by score
-// (best per student) and anonymises students who have set
-// `is_public = false` on their `candidate_profiles` row. The
-// contract guarantees that an anonymous row never reveals
-// `student_id` (or any other identifying column).
 export async function GET(_req: Request, ctx: Params) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+  const { supabase, user } = auth;
   const { id } = await ctx.params;
 
   // 1. Best score per student for this hackathon, ranked desc.

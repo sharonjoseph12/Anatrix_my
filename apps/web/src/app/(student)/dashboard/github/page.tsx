@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IntegrationsClient } from "@/components/dashboard/integrations-client";
 import type { Integration } from "@/components/dashboard/integration-status";
+import { GithubConnectButton } from "./github-connect-button";
 
 export default async function GitHubPage() {
   const supabase = await createSupabaseServerClient();
@@ -52,9 +53,7 @@ export default async function GitHubPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild>
-              <a href="/api/integrations/github/connect">Connect GitHub</a>
-            </Button>
+            <GithubConnectButton />
           </CardContent>
         </Card>
       </div>

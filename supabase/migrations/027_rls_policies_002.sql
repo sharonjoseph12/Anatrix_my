@@ -124,14 +124,15 @@ create policy candidate_profiles_recruiter_read on public.candidate_profiles
 -- T093 � Recruiter RLS: only see candidate_profiles for users that are
 --  in this recruiter's company search filter AND have company_search_visible = true.
 --  Opted-out candidates never appear in result counts.
-create or replace policy candidate_profiles_recruiter_filter on public.candidate_profiles
+drop policy if exists candidate_profiles_recruiter_filter on public.candidate_profiles;
+create policy candidate_profiles_recruiter_filter on public.candidate_profiles
   for select to authenticated
   using (
     exists (
       select 1 from public.companies c
       where c.owner_user_id = auth.uid()
         and exists (
-          select 1 from public.institution_memberships im
+          select 1 from public.institution_members im
           where im.user_id = candidate_profiles.user_id
             and (c.search_filter -> 'institution_ids') ? im.institution_id::text
         )

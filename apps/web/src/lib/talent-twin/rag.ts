@@ -52,7 +52,7 @@ export async function buildChunksOverview(userId: string): Promise<{
   const byType: Record<string, number> = {};
   const repoMap: Record<string, { chunks: number; commits: number; linesAdded: number }> = {};
 
-  for (const c of (chunks ?? []) as TalentTwinChunk[]) {
+  for (const c of (chunks ?? []) as unknown as TalentTwinChunk[]) {
     byType[c.chunkType] = (byType[c.chunkType] ?? 0) + 1;
     const meta = c.metadata as Record<string, unknown>;
     const repo = meta?.repo as string | undefined;

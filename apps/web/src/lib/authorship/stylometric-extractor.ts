@@ -15,24 +15,27 @@ export function extractStylometricVector(
     (bin) => latencies.filter((l) => l >= bin && l < bin + 50).length,
   );
 
+  return {
+    keystrokeTiming: [bins, counts].flat(),
+    astDiffSequence: astDiffs,
+    errorRecovery: buildErrorRecovery(errorRecoveries),
+  };
+}
+
+function buildErrorRecovery(errorRecoveries: Array<{ latency: number }>) {
   const errorLatencies = errorRecoveries.map((e) => e.latency);
   const meanLatency = errorLatencies.length > 0
     ? errorLatencies.reduce((a, b) => a + b, 0) / errorLatencies.length
     : 0;
   const sorted = [...errorLatencies].sort((a, b) => a - b);
   const medianLatency = sorted.length > 0
-    ? sorted[Math.floor(sorted.length / 2)]
+    ? (sorted[Math.floor(sorted.length / 2)] ?? 0)
     : 0;
-
   return {
-    keystrokeTiming: [bins, counts].flat(),
-    astDiffSequence: astDiffs,
-    errorRecovery: {
-      count: errorRecoveries.length,
-      latenciesMs: errorLatencies,
-      meanLatencyMs: meanLatency,
-      medianLatencyMs: medianLatency,
-    },
+    count: errorRecoveries.length,
+    latenciesMs: errorLatencies,
+    meanLatencyMs: meanLatency,
+    medianLatencyMs: medianLatency,
   };
 }
 
@@ -49,19 +52,19 @@ export function compareVectors(
     return 0;
   }
 
-  const a = sessionVector.keystrokeTiming;
-  const b = baseline.keystrokeTiming;
+  return computeCosineSimilarity(sessionVector.keystrokeTiming, baseline.keystrokeTiming);
+}
+
+function computeCosineSimilarity(a: number[], b: number[]) {
   const minLen = Math.min(a.length, b.length);
-
-  let dot = 0;
-  let normA = 0;
-  let normB = 0;
+  let dot = 0, normA = 0, normB = 0;
   for (let i = 0; i < minLen; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
+    const valA = a[i] ?? 0;
+    const valB = b[i] ?? 0;
+    dot += valA * valB;
+    normA += valA * valA;
+    normB += valB * valB;
   }
-
   const magnitude = Math.sqrt(normA) * Math.sqrt(normB);
   return magnitude === 0 ? 0 : dot / magnitude;
 }

@@ -6,7 +6,7 @@
 //   detector_inputs_hash is REQUIRED (never null).
 //   confidence = weighted average of per-source confidences, clamped to [0, 0.95].
 
-import { hashStructured } from "@antarix/utils/hash";
+import { hashStructured } from "@antarix/utils/hash-structured";
 import type { BiometricAggregate } from "@antarix/types/biometrics";
 import type { IDEAggregate } from "@antarix/types/ide-telemetry";
 

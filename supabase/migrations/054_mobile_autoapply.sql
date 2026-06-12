@@ -1,0 +1,1 @@
+-- 054_mobile_autoapply.sql

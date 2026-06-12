@@ -50,17 +50,3 @@ export interface VideoRoomProviderClient {
  */
 export const DEFAULT_VIDEO_ROOM_PROVIDER: VideoRoomProvider = 'google_meet';
 
-/**
- * Helper to pick the right client at runtime based on env / feature flag.
- * 008 will publish the LiveKit client under `livekit-client.ts`; 007 imports both.
- */
-export async function getVideoRoomClient(
-  provider: VideoRoomProvider = DEFAULT_VIDEO_ROOM_PROVIDER
-): Promise<VideoRoomProviderClient> {
-  if (provider === 'google_meet') {
-    const { GoogleMeetClient } = await import('./google-meet-client');
-    return new GoogleMeetClient();
-  }
-  const { LiveKitClient } = await import('./livekit-client');
-  return new LiveKitClient();
-}

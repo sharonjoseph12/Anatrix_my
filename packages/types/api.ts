@@ -1,19 +1,20 @@
 // API request/response types — mirrors contracts/api.md
 
-import type {
-  Session,
-  Insight,
-  UserSkill,
-  CandidateProfile,
-  Cohort,
-  Institution,
-  Company,
-  JobMatch,
-  UserType,
-  SessionCategory,
-  ProficiencyLevel,
-  JobMatchStatus,
-} from "./database";
+import type { Database } from "./database";
+
+export type Session = Database['public']['Tables']['sessions']['Row'];
+export type Insight = Database['public']['Tables']['insights']['Row'];
+export type UserSkill = Database['public']['Tables']['user_skills']['Row'];
+export type CandidateProfile = Database['public']['Tables']['candidate_profiles']['Row'];
+export type Cohort = Database['public']['Tables']['cohorts']['Row'];
+export type Institution = Database['public']['Tables']['institutions']['Row'];
+export type Company = Database['public']['Tables']['companies']['Row'];
+export type JobMatch = Database['public']['Tables']['job_matches']['Row'];
+export type UserType = Database['public']['Enums']['user_type'];
+export type SessionCategory = Database['public']['Enums']['session_category'];
+export type ProficiencyLevel = Database['public']['Enums']['proficiency_level'];
+export type JobMatchStatus = Database['public']['Enums']['job_match_status'];
+export type FocusLevel = Database['public']['Enums']['focus_level'];
 
 // =============================================================================
 // Auth

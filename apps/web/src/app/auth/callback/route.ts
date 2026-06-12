@@ -8,6 +8,10 @@ export async function GET(request: NextRequest) {
   const errorParam = url.searchParams.get("error_description");
 
   if (errorParam) {
+    if (errorParam.includes("already linked")) {
+      // Identity is linked, but github_accounts might be missing. Redirect back to github page to trigger sync.
+      return NextResponse.redirect(new URL("/dashboard/github?sync=true", url.origin));
+    }
     return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(errorParam)}`, url.origin));
   }
 

@@ -91,16 +91,12 @@ begin
   ) then
     alter table public.api_keys
       add constraint api_keys_scopes_union_chk
-      check (not exists (
-        select 1
-          from unnest(scopes) as s
-         where s not in (
-           'read:public_profile',
-           'read:verifiable_credential',
-           'webhook:subscribe',
-           'read:placement_aggregate'
-         )
-      ));
+      check (scopes <@ ARRAY[
+        'read:public_profile',
+        'read:verifiable_credential',
+        'webhook:subscribe',
+        'read:placement_aggregate'
+      ]::text[]);
   end if;
 end $$;
 

@@ -13,11 +13,15 @@
     "./timezone": "./timezone.ts",
     "./whatsapp-cost-guard": "./whatsapp-cost-guard.ts",
     "./suppress-nudge": "./suppress-nudge.ts",
-    "./hash": "./hash.ts",
     "./score-cap": "./score-cap.ts",
     "./feature-flags": "./feature-flags.ts",
     "./cron": "./cron.ts",
-    "./collab-opt-out": "./collab-opt-out.ts"
+    "./collab-opt-out": "./collab-opt-out.ts",
+    "./hash-structured": "./hash-structured.ts",
+    "./hash": "./hash/index.ts",
+    "./sha256": "./sha256.ts",
+    "./stable-stringify": "./stable-stringify.ts",
+    "./canonical-json": "./canonical-json.ts"
   },
   "scripts": {
     "lint": "eslint .",

@@ -5,11 +5,12 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { json, handleOptions } from "../_shared/college-intel.ts";
 import { scorePlacement } from "../_shared/placement-scorer.ts";
 
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors() });
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  const optionsRes = handleOptions(req);
+  if (optionsRes) return optionsRes;
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -77,15 +78,4 @@ async function gatherFeatures(supabase: ReturnType<typeof createClient>, userId:
 function isoDate(d: Date): string {
   // Returns YYYY-MM-DD (used as a date in placement_predictions.run_week)
   return d.toISOString().slice(0, 10);
-}
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { ...cor(), "Content-Type": "application/json" } });
-}
-function cor() {
-  return {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  };
 }

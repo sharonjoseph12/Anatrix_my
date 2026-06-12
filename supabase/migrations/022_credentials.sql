@@ -2,8 +2,12 @@
 -- T015 — verifiable_credentials, credential_distributions
 -- See spec/002 A-014 for the snapshot-refresh threshold
 
-create type credential_channel as enum ('link', 'pdf', 'qr', 'linkedin_badge');
-create type revocation_status as enum ('active', 'revoked');
+do $$ begin
+  create type credential_channel as enum ('link', 'pdf', 'qr', 'linkedin_badge');
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create type revocation_status as enum ('active', 'revoked');
+exception when duplicate_object then null; end $$;
 
 create table if not exists public.verifiable_credentials (
   id uuid primary key default gen_random_uuid(),

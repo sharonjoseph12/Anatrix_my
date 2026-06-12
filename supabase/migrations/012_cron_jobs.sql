@@ -8,6 +8,9 @@
 --
 -- We use a SQL function per job so we can rerun/inspect them from the SQL editor.
 
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
 -- =============================================================================
 -- github-sync: every 2 hours, for all active github accounts
 -- =============================================================================

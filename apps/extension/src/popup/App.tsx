@@ -112,6 +112,9 @@ export function App() {
       client_id: active.clientId,
       synced_at: null,
       created_at: endedAt,
+      extension_version: "0.1.0",
+      sync_error: null,
+      sync_status: "pending",
     };
 
     await enqueuePendingSession(session);

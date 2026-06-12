@@ -1,22 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LayoutDashboard, Lightbulb, Users, Settings, BarChart3, History, Github, Award, BrainCircuit } from "lucide-react";
+import { SidebarNav } from "./sidebar-nav";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { UserMenu } from "@/components/dashboard/user-menu";
-import { SidebarLink } from "@/components/dashboard/sidebar-link";
 import { cn } from "@/lib/utils";
-
-const NAV = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/sessions", label: "Sessions", icon: History },
-  { href: "/dashboard/skills", label: "Skills", icon: Award },
-  { href: "/dashboard/github", label: "GitHub", icon: Github },
-  { href: "/dashboard/insights", label: "Insights", icon: Lightbulb },
-  { href: "/dashboard/peak-self", label: "Peak Self", icon: BarChart3 },
-  { href: "/dashboard/cohorts", label: "Cohorts", icon: Users },
-  { href: "/talent-twin", label: "Talent Twin", icon: BrainCircuit },
-  { href: "/settings", label: "Settings", icon: Settings },
-] as const;
 
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createSupabaseServerClient();
@@ -46,11 +33,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
             Antarix
           </Link>
         </div>
-        <nav className="flex flex-col gap-1 p-3">
-          {NAV.map((item) => (
-            <SidebarLink key={item.href} href={item.href} label={item.label} icon={item.icon} />
-          ))}
-        </nav>
+        <SidebarNav />
         <div className="absolute bottom-4 left-3 right-3 hidden md:block">
           <div className="rounded-lg border bg-card p-3 text-xs text-muted-foreground">
             <p className="font-medium text-foreground">Insights unlock in 7 days</p>

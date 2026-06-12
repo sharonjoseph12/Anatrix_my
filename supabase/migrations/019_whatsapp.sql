@@ -9,8 +9,12 @@
 create extension if not exists "pgcrypto";
 
 -- whatsapp_connections
-create type whatsapp_provider as enum ('meta_cloud', 'twilio');
-create type whatsapp_status as enum ('active', 'paused', 'opt_out', 'disconnected', 'error');
+do $$ begin
+  create type whatsapp_provider as enum ('meta_cloud', 'twilio');
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create type whatsapp_status as enum ('active', 'paused', 'opt_out', 'disconnected', 'error');
+exception when duplicate_object then null; end $$;
 
 create table if not exists public.whatsapp_connections (
   id uuid primary key default gen_random_uuid(),
@@ -49,18 +53,26 @@ create table if not exists public.nudge_preferences (
 );
 
 -- nudges
+do $$ begin
 create type nudge_type as enum (
   'daily_morning', 'real_time_peak', 'streak_risk', 'weekly_summary', 'verification', 'pause_confirmation'
 );
+exception when duplicate_object then null; end $$;
+do $$ begin
 create type nudge_channel as enum ('whatsapp', 'push', 'dashboard');
+exception when duplicate_object then null; end $$;
+do $$ begin
 create type nudge_trigger_source as enum (
   'cron', 'event_commit', 'event_score_recomputed',
   'event_calendar_window_opened', 'event_exam_detected', 'student_reply'
 );
+exception when duplicate_object then null; end $$;
+do $$ begin
 create type nudge_delivery_status as enum (
   'queued', 'sent', 'delivered', 'read', 'failed',
   'suppressed_quiet_hours', 'suppressed_exam_week', 'suppressed_paused', 'suppressed_opt_out'
 );
+exception when duplicate_object then null; end $$;
 
 create table if not exists public.nudges (
   id uuid primary key default gen_random_uuid(),
@@ -82,8 +94,12 @@ create index if not exists nudges_user_type_created_idx on public.nudges(user_id
 create index if not exists nudges_queued_send_after_idx on public.nudges(send_after) where delivery_status = 'queued';
 
 -- nudge_responses
+do $$ begin
 create type nudge_response_kind as enum ('command', 'click', 'reply_text');
+exception when duplicate_object then null; end $$;
+do $$ begin
 create type nudge_command as enum ('START', 'DONE', 'STATS', 'RANK', 'HELP', 'PAUSE', 'RESUME');
+exception when duplicate_object then null; end $$;
 
 create table if not exists public.nudge_responses (
   id uuid primary key default gen_random_uuid(),

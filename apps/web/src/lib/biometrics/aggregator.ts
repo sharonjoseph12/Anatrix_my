@@ -5,7 +5,7 @@
 // with deterministic SHA-256 source_hash. No I/O, no DB, no network.
 
 import { randomUUID } from "node:crypto";
-import { hashStructured } from "@antarix/utils/hash";
+import { hashStructured } from "@antarix/utils/hash-structured";
 import type {
   BiometricAggregate,
   BiometricPeriodType,

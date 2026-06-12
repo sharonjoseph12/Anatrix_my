@@ -3,23 +3,9 @@
 // users.company_search_visible = true, decrements monthly_search_credit_balance,
 // persists the search, returns the result set with a per-row match_score.
 
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { json, serveWithAuth } from "../_shared/college-intel.ts";
 
-serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors() });
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
-
-  const auth = req.headers.get("Authorization");
-  if (!auth) return json({ error: "Missing Authorization" }, 401);
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-    { global: { headers: { Authorization: auth } }, auth: { persistSession: false } },
-  );
-  const { data: { user }, error: ue } = await supabase.auth.getUser();
-  if (ue || !user) return json({ error: "Not authenticated" }, 401);
-
+serveWithAuth(async (req, supabase, user) => {
   const { skills = [], min_score = 0, batch_years = [], location = "", power_mode_only = false } = await req.json() as {
     skills?: string[]; min_score?: number; batch_years?: number[]; location?: string; power_mode_only?: boolean;
   };
@@ -101,15 +87,4 @@ function summarizeActivity(v: unknown): string {
   const commits = (a.commits_30d as number | undefined) ?? 0;
   const streak = (a.streak_days as number | undefined) ?? 0;
   return `${commits} commits · ${streak}-day streak`;
-}
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { ...cor(), "Content-Type": "application/json" } });
-}
-function cor() {
-  return {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  };
 }

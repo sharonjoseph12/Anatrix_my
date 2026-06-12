@@ -1,0 +1,43 @@
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { TokenVerifier } from "livekit-server-sdk";
+
+import { mintObserverToken, mintToken } from "../../apps/web/src/lib/collab/livekit";
+
+const OLD_ENV = { ...process.env };
+
+describe("LiveKit token minting", () => {
+  beforeEach(() => {
+    process.env.LIVEKIT_API_KEY = "devkey";
+    process.env.LIVEKIT_API_SECRET = "devsecretdevsecretdevsecretdevsecret";
+  });
+
+  afterEach(() => {
+    process.env = { ...OLD_ENV };
+  });
+
+  it("mints publisher tokens with room, identity, and TTL claims", async () => {
+    const token = await mintToken("room-a", "user-a", {
+      canPublish: true,
+      canSubscribe: true,
+      ttlSeconds: 600,
+    });
+    const claims = await new TokenVerifier("devkey", "devsecretdevsecretdevsecretdevsecret").verify(token);
+
+    expect(claims.sub).toBe("user-a");
+    expect(claims.video?.room).toBe("room-a");
+    expect(claims.video?.roomJoin).toBe(true);
+    expect(claims.video?.canPublish).toBe(true);
+    expect(claims.video?.canSubscribe).toBe(true);
+    expect((claims.exp ?? 0) - (claims.nbf ?? claims.iat ?? 0)).toBe(600);
+  });
+
+  it("mints observer tokens without publish permission", async () => {
+    const token = await mintObserverToken("room-b", "observer-a");
+    const claims = await new TokenVerifier("devkey", "devsecretdevsecretdevsecretdevsecret").verify(token);
+
+    expect(claims.sub).toBe("observer-a");
+    expect(claims.video?.room).toBe("room-b");
+    expect(claims.video?.canPublish).toBe(false);
+    expect(claims.video?.canSubscribe).toBe(true);
+  });
+});

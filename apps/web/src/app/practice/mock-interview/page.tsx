@@ -41,6 +41,17 @@ export default function MockInterviewPage() {
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
+  const send = useMockInterviewStream(
+    interviewId,
+    input,
+    setInput,
+    setTurns,
+    streaming,
+    setStreaming,
+    setError,
+    abortRef
+  );
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [turns]);
@@ -76,82 +87,6 @@ export default function MockInterviewPage() {
     }
   }
 
-  async function send() {
-    if (!interviewId || !input.trim() || streaming) return;
-    const message = input.trim();
-    setInput("");
-    setTurns((prev) => [...prev, { role: "student", content: message }, { role: "interviewer", content: "", pending: true }]);
-    setStreaming(true);
-    setError(null);
-    const ctl = new AbortController();
-    abortRef.current = ctl;
-    try {
-      const res = await fetch("/api/mock-interview/turn", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: ctl.signal,
-        body: JSON.stringify({ interview_id: interviewId, message }),
-      });
-      if (!res.ok || !res.body) {
-        const text = await res.text();
-        setError(text || "Stream failed");
-        setTurns((prev) => prev.slice(0, -1));
-        return;
-      }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let assembled = "";
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        let nl: number;
-        while ((nl = buffer.indexOf("\n")) >= 0) {
-          const line = buffer.slice(0, nl).trim();
-          buffer = buffer.slice(nl + 1);
-          if (!SSE_HEADERS_OK(line)) continue;
-          const payload = line.slice(5).trim();
-          if (payload === "[DONE]") continue;
-          try {
-            const obj = JSON.parse(payload) as { delta?: string; error?: string; done?: boolean };
-            if (obj.error) {
-              setError(typeof obj.error === "string" ? obj.error : "Stream error");
-              continue;
-            }
-            if (obj.delta) {
-              assembled += obj.delta;
-              setTurns((prev) => {
-                const next = prev.slice();
-                const last = next[next.length - 1];
-                if (last && last.role === "interviewer") {
-                  next[next.length - 1] = { ...last, content: assembled, pending: true };
-                }
-                return next;
-              });
-            }
-            if (obj.done) {
-              setTurns((prev) => {
-                const next = prev.slice();
-                const last = next[next.length - 1];
-                if (last && last.role === "interviewer") {
-                  next[next.length - 1] = { ...last, pending: false };
-                }
-                return next;
-              });
-            }
-          } catch { /* ignore */ }
-        }
-      }
-    } catch (e) {
-      if ((e as Error).name !== "AbortError") {
-        setError((e as Error).message);
-      }
-    } finally {
-      setStreaming(false);
-      abortRef.current = null;
-    }
-  }
 
   function stop() {
     abortRef.current?.abort();
@@ -319,4 +254,99 @@ function Stat({ label, value }: { label: string; value: number }) {
       <p className="text-2xl font-semibold tabular-nums">{value}/10</p>
     </div>
   );
+}
+
+function useMockInterviewStream(
+  interviewId: string | null,
+  input: string,
+  setInput: React.Dispatch<React.SetStateAction<string>>,
+  setTurns: React.Dispatch<React.SetStateAction<Turn[]>>,
+  streaming: boolean,
+  setStreaming: React.Dispatch<React.SetStateAction<boolean>>,
+  setError: React.Dispatch<React.SetStateAction<string | null>>,
+  abortRef: React.MutableRefObject<AbortController | null>
+) {
+  return async function send() {
+    if (!interviewId || !input.trim() || streaming) return;
+    const message = input.trim();
+    setInput("");
+    setTurns((prev) => [...prev, { role: "student", content: message }, { role: "interviewer", content: "", pending: true }]);
+    setStreaming(true);
+    setError(null);
+    const ctl = new AbortController();
+    abortRef.current = ctl;
+    try {
+      const res = await fetch("/api/mock-interview/turn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: ctl.signal,
+        body: JSON.stringify({ interview_id: interviewId, message }),
+      });
+      if (!res.ok || !res.body) {
+        const text = await res.text();
+        setError(text || "Stream failed");
+        setTurns((prev) => prev.slice(0, -1));
+        return;
+      }
+      await processStream(res.body.getReader(), setTurns, setError);
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") {
+        setError((e as Error).message);
+      }
+    } finally {
+      setStreaming(false);
+      abortRef.current = null;
+    }
+  };
+}
+
+async function processStream(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  setTurns: React.Dispatch<React.SetStateAction<Turn[]>>,
+  setError: React.Dispatch<React.SetStateAction<string | null>>
+) {
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let assembled = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let nl: number;
+    while ((nl = buffer.indexOf("\n")) >= 0) {
+      const line = buffer.slice(0, nl).trim();
+      buffer = buffer.slice(nl + 1);
+      if (!SSE_HEADERS_OK(line)) continue;
+      const payload = line.slice(5).trim();
+      if (payload === "[DONE]") continue;
+      try {
+        const obj = JSON.parse(payload) as { delta?: string; error?: string; done?: boolean };
+        if (obj.error) {
+          setError(typeof obj.error === "string" ? obj.error : "Stream error");
+          continue;
+        }
+        if (obj.delta) {
+          assembled += obj.delta;
+          setTurns((prev) => {
+            const next = prev.slice();
+            const last = next[next.length - 1];
+            if (last && last.role === "interviewer") {
+              next[next.length - 1] = { ...last, content: assembled, pending: true };
+            }
+            return next;
+          });
+        }
+        if (obj.done) {
+          setTurns((prev) => {
+            const next = prev.slice();
+            const last = next[next.length - 1];
+            if (last && last.role === "interviewer") {
+              next[next.length - 1] = { ...last, pending: false };
+            }
+            return next;
+          });
+        }
+      } catch { /* ignore */ }
+    }
+  }
 }

@@ -43,7 +43,7 @@ export async function evaluateMirrorGate(studentId: string): Promise<GateResult>
   }
 
   // Check tenant flag
-  const institution = student.institution as { onchain_mirror_enabled: boolean } | null;
+  const institution = student.institution as unknown as { onchain_mirror_enabled: boolean } | null;
   if (institution && !institution.onchain_mirror_enabled) {
     return { allowed: false, reason: 'tenant_disabled' };
   }

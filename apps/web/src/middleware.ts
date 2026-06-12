@@ -45,6 +45,7 @@ const SYSTEM_PREFIXES = [
   "/analytics",
   "/ai-coach",
   "/credential",
+  "/talent-twin",
 ];
 
 function getSubdomain(host: string | null): string {

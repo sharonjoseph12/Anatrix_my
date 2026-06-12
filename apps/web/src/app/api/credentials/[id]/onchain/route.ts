@@ -1,7 +1,7 @@
 // ─── Credentials On-Chain API Route ─────────────────────────────────────────
 // POST (request mirror) + GET (status)
 
-import { createClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient as createClient } from '@/lib/supabase/server';
 import { evaluateMirrorGate } from '@/lib/kill-switch';
 import { NextRequest, NextResponse } from 'next/server';
 

@@ -12,12 +12,11 @@ create index if not exists idx_user_dsa_profiles_due
 -- Channels: hot path in the dispatcher is "verified handles for user X".
 create index if not exists idx_external_channel_handles_verified
   on public.external_channel_handles (user_id, channel)
-  where verified = true;
+  where verified_at is not null;
 
 -- Slug redirects: middleware looks up old_slug where not expired.
 create index if not exists idx_slug_redirects_unexpired
-  on public.slug_redirects (old_slug, new_slug)
-  where expires_at > now();
+  on public.slug_redirects (old_slug, new_slug);
 
 -- candidate_profiles: already has unique (slug) from 017; add covering
 -- index for sitemap / public listing.

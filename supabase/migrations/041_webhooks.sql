@@ -375,9 +375,8 @@ create or replace function public.webhook_generate_secret()
 returns text
 language sql
 volatile
-set search_path = public
 as $$
-  select encode(gen_random_bytes(32), 'hex');
+  select encode(extensions.gen_random_bytes(32), 'hex');
 $$;
 
 comment on function public.webhook_generate_secret() is

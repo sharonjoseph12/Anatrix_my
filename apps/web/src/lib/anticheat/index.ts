@@ -4,3 +4,4 @@
 export * from "./github-signals";
 export * from "./dsa-signals";
 export * from "./score-aggregator";
+export * from "./collab-typing-divergence";

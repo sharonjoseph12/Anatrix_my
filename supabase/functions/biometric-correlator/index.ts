@@ -13,6 +13,7 @@
 // algorithm is duplicated inline.
 
 import { createClient } from "jsr:@supabase/supabase-js@2.45.0";
+import { hashStructured } from "../../../packages/utils/hash-structured.ts";
 
 // ----- env ------------------------------------------------------------------
 

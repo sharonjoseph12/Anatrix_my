@@ -1,23 +1,15 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/supabase/server";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
 
-// Recruiter publishes a draft hackathon. The RLS policy on
-// `hackathons` already enforces `auth.uid() = recruiter_id` for
-// UPDATE, so a non-owner will get a Postgres permission error
-// (Postgres error code 42501).
 export async function POST(_req: Request, ctx: Params) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+  const { supabase, user } = auth;
   const { id } = await ctx.params;
   const rl = rateLimit({ key: `hackathon-publish:${user.id}`, limit: 10, windowMs: 60_000 });
   if (!rl.ok) return rateLimitResponse(rl.resetAt);
