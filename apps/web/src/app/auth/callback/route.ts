@@ -12,6 +12,9 @@ export async function GET(request: NextRequest) {
       // Identity is linked, but github_accounts might be missing. Redirect back to github page to trigger sync.
       return NextResponse.redirect(new URL("/dashboard/github?sync=true", url.origin));
     }
+    if (next && next.includes("github")) {
+      return NextResponse.redirect(new URL(`${next}?error=${encodeURIComponent(errorParam)}`, url.origin));
+    }
     return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(errorParam)}`, url.origin));
   }
 
