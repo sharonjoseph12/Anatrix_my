@@ -68,30 +68,17 @@ export function CompanySignupForm() {
         return;
       }
 
-      const { data: company, error: cErr } = await supabase
-        .from("companies")
-        .insert({
-          name: companyName,
-          industry: industry || null,
-          city: city || null,
-          subscription_tier: tier,
-        })
-        .select("id")
-        .single();
-
-      if (cErr) {
-        setError(`Could not create company: ${cErr.message}`);
-        return;
-      }
-
-      const { error: memErr } = await supabase.from("company_members").insert({
-        company_id: company!.id,
-        user_id: signUpData.user.id,
-        role: "admin",
+      const { data: companyId, error: rpcErr } = await supabase.rpc("register_company_account", {
+        p_user_id: signUpData.user.id,
+        p_name: companyName,
+        p_industry: industry || null,
+        p_city: city || null,
+        p_tier: tier,
       });
 
-      if (memErr) {
-        toast.warning("Company created, but membership link failed. Contact support.");
+      if (rpcErr || !companyId) {
+        setError(`Could not create company: ${rpcErr?.message || "Unknown error"}`);
+        return;
       }
 
       setInfo("Check your email to confirm your account.");

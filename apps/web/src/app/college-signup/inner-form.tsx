@@ -69,30 +69,17 @@ export function CollegeSignupForm() {
         return;
       }
 
-      const { data: inst, error: instErr } = await supabase
-        .from("institutions")
-        .insert({
-          name: institutionName,
-          type,
-          city: city || null,
-          country,
-        })
-        .select("id")
-        .single();
-
-      if (instErr) {
-        setError(`Could not create institution: ${instErr.message}`);
-        return;
-      }
-
-      const { error: memErr } = await supabase.from("institution_members").insert({
-        institution_id: inst!.id,
-        user_id: signUpData.user.id,
-        role: "placement_officer",
+      const { data: instId, error: rpcErr } = await supabase.rpc("register_institution_account", {
+        p_user_id: signUpData.user.id,
+        p_name: institutionName,
+        p_type: type,
+        p_city: city || null,
+        p_country: country,
       });
 
-      if (memErr) {
-        toast.warning("Institution created, but membership link failed. Contact support.");
+      if (rpcErr || !instId) {
+        setError(`Could not create institution: ${rpcErr?.message || "Unknown error"}`);
+        return;
       }
 
       setInfo("Check your email to confirm your account.");
