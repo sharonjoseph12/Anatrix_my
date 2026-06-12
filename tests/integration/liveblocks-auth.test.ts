@@ -23,7 +23,7 @@ describe("Liveblocks auth token minting", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ room: "collab-room-123" }),
     });
-    const body = parseAuthBody(response.body);
+    const body = parseAuthBody(await response.text());
 
     expect(response.status).toBe(200);
     expect(typeof body.token).toBe("string");
