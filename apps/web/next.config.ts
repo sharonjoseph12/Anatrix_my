@@ -56,7 +56,7 @@ function buildPwaPlugin(intl: Plugin): Plugin {
       swSrc: "src/sw/service-worker.ts",
       swDest: "public/sw.js",
       reloadOnOnline: false,
-      disable: false,
+      disable: process.env.NODE_ENV === "development",
     });
     return (cfg: NextConfig) => (withPwa as Plugin)(intl(cfg));
   } catch {
