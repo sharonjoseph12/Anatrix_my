@@ -20,34 +20,58 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const supabase = await createSupabaseServerClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      // T026 — Day-1 value: if the user just connected GitHub, immediately enqueue
-      // a fast GitHub sync so the dashboard lands populated, not empty.
-      // Detection: Supabase puts the provider in the session's user.app_metadata.provider.
-      const { data: userData } = await supabase.auth.getUser();
-      const provider = (userData?.user?.app_metadata as { provider?: string } | undefined)?.provider;
-      if (provider === "github") {
+      const githubIdentity = sessionData?.user?.identities?.find((i) => i.provider === "github");
+      const providerToken = sessionData?.session?.provider_token;
+      
+      if (githubIdentity && providerToken) {
         try {
           const service = createSupabaseServiceClient();
-          const userId = userData?.user?.id;
-          if (userId) {
-            const { data: gh } = await service
+          const userId = sessionData.user.id;
+          
+          const githubIdStr = githubIdentity.identity_data?.provider_id || githubIdentity.identity_data?.sub || "0";
+          const githubId = parseInt(githubIdStr, 10);
+          const username = githubIdentity.identity_data?.user_name || githubIdentity.identity_data?.preferred_username || "github_user";
+
+          if (githubId) {
+            const { error: upsertError } = await service
               .from("github_accounts")
-              .select("id")
-              .eq("user_id", userId)
-              .maybeSingle();
-            if (gh) {
-              // Fire-and-forget; the dashboard reads whatever has landed by render time.
+              .upsert({
+                user_id: userId,
+                github_id: githubId,
+                username: username,
+                access_token_encrypted: providerToken,
+                refresh_token_encrypted: sessionData.session?.provider_refresh_token || null,
+                scope: "read:user user:email repo",
+                status: "active",
+                updated_at: new Date().toISOString(),
+              }, { onConflict: "user_id" });
+
+            if (!upsertError) {
               await service.functions.invoke("github-sync-fast", {
                 body: { user_id: userId, mode: "day_one" },
               });
+            } else {
+              console.error("github_accounts upsert failed:", upsertError);
             }
           }
         } catch (e) {
-          // Non-blocking: the recurring github-sync cron will pick this up within 2h.
           console.error("github-sync-fast enqueue failed", e);
         }
+      } else if (!providerToken && githubIdentity) {
+        // If providerToken is missing but identity exists, the user might be re-authenticating.
+        // Try triggering sync just in case.
+        try {
+          const service = createSupabaseServiceClient();
+          const userId = sessionData.user.id;
+          const { data: gh } = await service.from("github_accounts").select("id").eq("user_id", userId).maybeSingle();
+          if (gh) {
+            await service.functions.invoke("github-sync-fast", {
+              body: { user_id: userId, mode: "day_one" },
+            });
+          }
+        } catch (e) {}
       }
       return NextResponse.redirect(new URL(next, url.origin));
     }
