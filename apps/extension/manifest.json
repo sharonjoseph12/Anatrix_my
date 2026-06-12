@@ -23,6 +23,16 @@
     "default_popup": "src/popup/popup.html",
     "default_title": "Antarix Activity Tracker"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/extension/auth*",
+        "https://*/extension/auth*"
+      ],
+      "js": ["src/content/auth-handoff.ts"],
+      "run_at": "document_idle"
+    }
+  ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
   }

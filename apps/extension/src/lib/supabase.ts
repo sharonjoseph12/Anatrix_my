@@ -18,9 +18,15 @@ export function getSupabaseClient(): SupabaseClient {
   cachedClient = createClient(url, anonKey, {
     auth: {
       persistSession: false,
-      autoRefreshToken: false,
+      autoRefreshToken: true,
       detectSessionInUrl: false,
     },
+  });
+
+  cachedClient.auth.onAuthStateChange((event, session) => {
+    if (session && (event === "TOKEN_REFRESHED" || event === "SIGNED_IN")) {
+      void setStoredTokens(session.access_token, session.refresh_token);
+    }
   });
 
   return cachedClient;
@@ -45,6 +51,30 @@ export async function getAccessToken(): Promise<string | null> {
 export async function getRefreshToken(): Promise<string | null> {
   const result = await chrome.storage.local.get(REFRESH_KEY);
   return (result[REFRESH_KEY] as string | undefined) ?? null;
+}
+
+export async function ensureAuthenticatedClient(): Promise<SupabaseClient | null> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) return null;
+
+  const client = getSupabaseClient();
+  const refreshToken = await getRefreshToken();
+  const { data, error } = await client.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken ?? "",
+  });
+  if (error) {
+    const { data: refreshed, error: refreshError } = await client.auth.refreshSession({
+      refresh_token: refreshToken ?? "",
+    });
+    if (refreshError || !refreshed.session) return null;
+    await setStoredTokens(refreshed.session.access_token, refreshed.session.refresh_token);
+    return client;
+  }
+  if (data.session) {
+    await setStoredTokens(data.session.access_token, data.session.refresh_token);
+  }
+  return client;
 }
 
 export async function authenticatedFetch(input: string, init: RequestInit = {}): Promise<Response> {

@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     if (!error) {
       const githubIdentity = sessionData?.user?.identities?.find((i) => i.provider === "github");
       const providerToken = sessionData?.session?.provider_token;
-      
+
       if (githubIdentity && providerToken) {
         try {
           const service = createSupabaseServiceClient();
@@ -73,6 +73,42 @@ export async function GET(request: NextRequest) {
           }
         } catch (e) {}
       }
+
+      const googleIdentity = sessionData?.user?.identities?.find((i) => i.provider === "google");
+      if (googleIdentity && providerToken) {
+        try {
+          const service = createSupabaseServiceClient();
+          const userId = sessionData.user.id;
+          const email =
+            googleIdentity.identity_data?.email ??
+            sessionData.user.email ??
+            "calendar_user";
+
+          const { error: calUpsertError } = await service
+            .from("calendar_accounts")
+            .upsert(
+              {
+                user_id: userId,
+                email,
+                provider: "google",
+                access_token_encrypted: providerToken,
+                refresh_token_encrypted: sessionData.session?.provider_refresh_token ?? null,
+                status: "active",
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "user_id" },
+            );
+
+          if (!calUpsertError) {
+            await service.functions.invoke("calendar-sync", {
+              body: { user_id: userId, full_sync: false },
+            });
+          }
+        } catch (e) {
+          console.error("calendar_accounts upsert failed", e);
+        }
+      }
+
       return NextResponse.redirect(new URL(next, url.origin));
     }
     return NextResponse.redirect(

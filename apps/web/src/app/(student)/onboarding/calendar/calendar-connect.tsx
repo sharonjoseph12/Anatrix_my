@@ -36,15 +36,19 @@ export function CalendarConnectPanel() {
   function connect() {
     const supabase = createSupabaseBrowserClient();
     startTransition(async () => {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/onboarding/calendar?connected=1`,
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/onboarding/calendar?connected=1")}`,
           scopes: "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email",
           queryParams: { access_type: "offline", prompt: "consent" },
         },
       });
-      if (error) console.error(error);
+      if (error) {
+        console.error(error);
+        return;
+      }
+      if (data?.url) window.location.href = data.url;
     });
   }
 

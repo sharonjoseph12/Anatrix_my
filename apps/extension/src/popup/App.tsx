@@ -3,7 +3,7 @@ import { LoginPanel } from "./components/LoginPanel";
 import { SessionForm } from "./components/SessionForm";
 import { SessionTimer } from "./components/SessionTimer";
 import { SessionComplete } from "./components/SessionComplete";
-import { getAccessToken, clearStoredTokens, getSupabaseClient } from "../lib/supabase";
+import { getAccessToken, clearStoredTokens, ensureAuthenticatedClient } from "../lib/supabase";
 import {
   getCurrentSession,
   setCurrentSession,
@@ -45,7 +45,12 @@ export function App() {
         setView("login");
         return;
       }
-      const supabase = getSupabaseClient();
+      const supabase = await ensureAuthenticatedClient();
+      if (!supabase) {
+        await clearStoredTokens();
+        setView("login");
+        return;
+      }
       const { data, error: userErr } = await supabase.auth.getUser();
       if (userErr || !data.user) {
         await clearStoredTokens();

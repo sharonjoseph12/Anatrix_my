@@ -22,7 +22,7 @@ function inferApiBase(): string {
   const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env;
   const fromEnv = env?.VITE_SUPABASE_URL;
   if (fromEnv) return fromEnv;
-  return "https://antarix.app";
+  return "http://127.0.0.1:54321";
 }
 
 export async function getStoredAuth(): Promise<StoredAuth | null> {

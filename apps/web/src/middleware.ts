@@ -46,6 +46,7 @@ const SYSTEM_PREFIXES = [
   "/ai-coach",
   "/credential",
   "/talent-twin",
+  "/extension",
 ];
 
 function getSubdomain(host: string | null): string {
@@ -102,7 +103,7 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  const protectedPaths = ["/dashboard", "/onboarding", "/settings", "/college", "/company"];
+  const protectedPaths = ["/dashboard", "/onboarding", "/settings", "/college", "/company", "/extension"];
   const isProtected = protectedPaths.some((path) => url.pathname.startsWith(path));
 
   if (isProtected && !user) {

@@ -22,11 +22,13 @@ export async function sendHeartbeat(): Promise<{ ok: boolean; status: number }> 
   };
 
   try {
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
     const r = await fetch(`${auth.apiBase}/functions/v1/extension-heartbeat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${auth.accessToken}`,
+        ...(anonKey ? { apikey: anonKey } : {}),
       },
       body: JSON.stringify(payload),
     });

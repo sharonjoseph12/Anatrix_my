@@ -29,18 +29,28 @@ export async function POST(req: Request) {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceKey) {
-    return NextResponse.json(
-      { error: "Edge function URL not configured" },
-      { status: 500 },
-    );
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl) {
+    return NextResponse.json({ error: "Edge function URL not configured" }, { status: 500 });
+  }
+
+  let authHeader = serviceKey ? `Bearer ${serviceKey}` : null;
+  if (!authHeader) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    authHeader = `Bearer ${session.access_token}`;
   }
 
   const res = await fetch(`${supabaseUrl}/functions/v1/${fnName}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${serviceKey}`,
+      Authorization: authHeader,
+      ...(anonKey ? { apikey: anonKey } : {}),
     },
     body: JSON.stringify({ user_id: user.id, full_sync: false }),
   });

@@ -5,14 +5,30 @@ export function LoginPanel({ onSignedIn }: { onSignedIn: () => void }) {
   const [opening, setOpening] = useState(false);
 
   useEffect(() => {
-    void chrome.storage.local.get("antarix:auth:token").then((res) => {
-      setHasToken(Boolean(res["antarix:auth:token"]));
-    });
-  }, []);
+    function checkToken() {
+      void chrome.storage.local.get("antarix:auth:token").then((res) => {
+        const tokenPresent = Boolean(res["antarix:auth:token"]);
+        setHasToken(tokenPresent);
+        if (tokenPresent) onSignedIn();
+      });
+    }
+
+    checkToken();
+    const onStorage = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      if (area !== "local" || !changes["antarix:auth:token"]) return;
+      checkToken();
+    };
+    chrome.storage.onChanged.addListener(onStorage);
+    return () => chrome.storage.onChanged.removeListener(onStorage);
+  }, [onSignedIn]);
 
   function openWebApp() {
     setOpening(true);
-    const url = `${process.env.VITE_WEB_APP_URL ?? "http://localhost:3000"}/login?next=/settings/integrations&extension=1`;
+    const webApp =
+      import.meta.env.VITE_WEB_APP_URL ??
+      import.meta.env.VITE_APP_URL ??
+      "http://localhost:3000";
+    const url = `${webApp}/login?next=${encodeURIComponent("/extension/auth")}&extension=1`;
     chrome.tabs.create({ url });
     window.close();
   }

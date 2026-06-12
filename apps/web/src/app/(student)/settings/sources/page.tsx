@@ -73,13 +73,21 @@ export function SourcesSettings() {
     setBusy(src);
     try {
       if (src === "github") {
-        const supabase = createSupabaseBrowserClient();
-        await supabase.auth.signInWithOAuth({ provider: "github", options: { redirectTo: `${location.origin}/auth/callback?next=/dashboard` } });
+        window.location.href = "/api/integrations/github/connect?next=/settings/sources";
       } else if (src === "calendar") {
-        const supabase = createSupabaseBrowserClient();
-        await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${location.origin}/auth/callback?next=/dashboard`, scopes: "https://www.googleapis.com/auth/calendar.readonly" } });
+        window.location.href = "/api/integrations/calendar/connect?next=/settings/sources";
       } else {
-        const r = await fetch("/functions/v1/whatsapp-connect", { method: "POST" });
+        const supabase = createSupabaseBrowserClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+        const r = await fetch(`${supabaseUrl}/functions/v1/whatsapp-connect`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+          },
+        });
         if (r.ok) {
           const j = await r.json() as { deep_link: string };
           window.open(j.deep_link, "_blank", "noopener,noreferrer");
@@ -93,7 +101,17 @@ export function SourcesSettings() {
   async function disconnect(src: SourceKey) {
     setBusy(src);
     try {
-      await fetch(`/functions/v1/sources-disconnect/${src}`, { method: "DELETE" });
+      const supabase = createSupabaseBrowserClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+      await fetch(`${supabaseUrl}/functions/v1/sources-disconnect/${src}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+        },
+      });
       await load();
     } finally {
       setBusy(null);

@@ -1,6 +1,6 @@
 import type { Session, SessionUploadResponse } from "@antarix/types";
 import { getPendingSessions, clearPendingSessions } from "../storage/session-store";
-import { getSupabaseClient } from "../lib/supabase";
+import { ensureAuthenticatedClient } from "../lib/supabase";
 
 const SUPABASE_FUNCTION_NAME = "session-upload";
 
@@ -17,7 +17,15 @@ export async function runSync(): Promise<SyncResult> {
     return { uploaded: 0, duplicates: 0, rejected: 0, errors: [] };
   }
 
-  const client = getSupabaseClient();
+  const client = await ensureAuthenticatedClient();
+  if (!client) {
+    return {
+      uploaded: 0,
+      duplicates: 0,
+      rejected: pending.length,
+      errors: ["Not authenticated"],
+    };
+  }
   const { data, error } = await client.functions.invoke<SessionUploadResponse>(
     SUPABASE_FUNCTION_NAME,
     {

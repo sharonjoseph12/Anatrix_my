@@ -14,7 +14,11 @@ type Mode = "signup" | "login";
 export function AuthForm({ mode }: { mode: Mode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = searchParams.get("next") ?? "/dashboard";
+  const extensionFlow = searchParams.get("extension") === "1";
+  const nextPath =
+    searchParams.get("next") ??
+    (extensionFlow ? "/extension/auth" : "/dashboard");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -64,13 +68,26 @@ export function AuthForm({ mode }: { mode: Mode }) {
   async function handleOAuth(provider: "github" | "google") {
     setError(null);
     const supabase = createSupabaseBrowserClient();
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+    const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
         redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
+        ...(provider === "google"
+          ? {
+              scopes:
+                "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email",
+              queryParams: { access_type: "offline", prompt: "consent" },
+            }
+          : { scopes: "read:user user:email repo" }),
       },
     });
-    if (oauthError) setError(oauthError.message);
+    if (oauthError) {
+      setError(oauthError.message);
+      return;
+    }
+    if (data?.url) {
+      window.location.href = data.url;
+    }
   }
 
   return (

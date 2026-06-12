@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
 import { Github, CalendarDays, RefreshCw, Unplug, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -145,7 +144,7 @@ function IntegrationRow({
           </>
         ) : (
           <Button size="sm" asChild>
-            <Link
+            <a
               href={
                 isGitHub
                   ? "/api/integrations/github/connect"
@@ -153,7 +152,7 @@ function IntegrationRow({
               }
             >
               Connect
-            </Link>
+            </a>
           </Button>
         )}
       </div>
